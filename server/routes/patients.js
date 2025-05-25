@@ -1,6 +1,7 @@
 import express from 'express';
 import Patient from '../models/Patient.js';
 import { Visit, InitialVisit, FollowupVisit, DischargeVisit } from '../models/Visit.js';
+import { authenticateToken } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
 
@@ -68,7 +69,8 @@ router.get('/:id', async (req, res) => {
 });
 
 // Create new patient
-router.post('/', async (req, res) => {
+router.post('/', authenticateToken, async (req, res) => {
+
   try {
     const patientData = req.body;
     
@@ -77,8 +79,12 @@ router.post('/', async (req, res) => {
       patientData.assignedDoctor = req.user.id;
     }
     
-    const patient = new Patient(patientData);
-    await patient.save();
+    const patient = new Patient({
+  ...patientData,
+  subjective: patientData.subjective || {}
+});
+await patient.save();
+
     
     res.status(201).json({
       message: 'Patient created successfully',
@@ -91,7 +97,8 @@ router.post('/', async (req, res) => {
 });
 
 // Update patient
-router.put('/:id', async (req, res) => {
+router.put('/:id', authenticateToken, async (req, res) => {
+
   try {
     const patient = await Patient.findById(req.params.id);
     
@@ -105,11 +112,15 @@ router.put('/:id', async (req, res) => {
     }
     
     // Update patient
-    const updatedPatient = await Patient.findByIdAndUpdate(
-      req.params.id,
-      req.body,
-      { new: true, runValidators: true }
-    );
+   const updatedPatient = await Patient.findByIdAndUpdate(
+  req.params.id,
+  {
+    ...req.body,
+    subjective: req.body.subjective || {}
+  },
+  { new: true, runValidators: true }
+);
+
     
     res.json({
       message: 'Patient updated successfully',
@@ -277,6 +288,28 @@ router.get('/visits/:visitId', async (req, res) => {
     res.json(visit);
   } catch (error) {
     console.error('Get visit error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// Delete patient
+router.delete('/:id', authenticateToken, async (req, res) => {
+  try {
+    const patient = await Patient.findById(req.params.id);
+
+    if (!patient) {
+      return res.status(404).json({ message: 'Patient not found' });
+    }
+
+    // Optional: Check if user is authorized (doctor owns patient)
+    if (req.user.role === 'doctor' && patient.assignedDoctor.toString() !== req.user.id) {
+      return res.status(403).json({ message: 'Access denied' });
+    }
+
+    await Patient.findByIdAndDelete(req.params.id);
+    res.json({ message: 'Patient deleted successfully' });
+  } catch (error) {
+    console.error('Delete patient error:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 });

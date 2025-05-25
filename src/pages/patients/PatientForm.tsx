@@ -13,13 +13,38 @@ interface Doctor {
 const PatientForm: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, token } = useAuth(); // ✅ new — now you have access to token
+
   const isEditMode = !!id;
   
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [doctors, setDoctors] = useState<Doctor[]>([]);
   const [formData, setFormData] = useState({
+
+    subjective: {
+      fullName: '',
+      date: '',
+      physical: [],
+      sleep: [],
+      cognitive: [],
+      digestive: [],
+      emotional: [],
+      bodyPart: [],
+      severity: '',
+      quality: [],
+      timing: '',
+      context: '',
+      exacerbatedBy: [],
+      symptoms: [],
+      notes: '',
+      radiatingTo: '',
+      radiatingRight: false,
+      radiatingLeft: false,
+      sciaticaRight: false,
+      sciaticaLeft: false
+    },
+
     firstName: '',
     lastName: '',
     dateOfBirth: '',
@@ -61,18 +86,43 @@ const PatientForm: React.FC = () => {
       setIsLoading(true);
       try {
         // If in edit mode, fetch patient data
-        if (isEditMode) {
-          const patientResponse = await axios.get(`http://localhost:5000/api/patients/${id}`);
-          const patientData = patientResponse.data;
-          
-          // Format date of birth for input
-          if (patientData.dateOfBirth) {
-            patientData.dateOfBirth = new Date(patientData.dateOfBirth).toISOString().split('T')[0];
-          }
-          
-          setFormData(patientData);
-        }
-        
+       if (isEditMode) {
+  const patientResponse = await axios.get(`http://localhost:5000/api/patients/${id}`);
+  const patientData = patientResponse.data;
+
+  if (patientData.dateOfBirth) {
+    patientData.dateOfBirth = new Date(patientData.dateOfBirth).toISOString().split('T')[0];
+  }
+
+  // ✅ Ensure subjective exists to avoid crashing on older patients
+  if (!patientData.subjective) {
+    patientData.subjective = {
+      fullName: '',
+      date: '',
+      physical: [],
+      sleep: [],
+      cognitive: [],
+      digestive: [],
+      emotional: [],
+      bodyPart: [],
+      severity: '',
+      quality: [],
+      timing: '',
+      context: '',
+      exacerbatedBy: [],
+      symptoms: [],
+      notes: '',
+      radiatingTo: '',
+      radiatingRight: false,
+      radiatingLeft: false,
+      sciaticaRight: false,
+      sciaticaLeft: false
+    };
+  }
+
+  setFormData(patientData);
+}
+ 
         // If user is admin, fetch doctors for dropdown
         if (user?.role === 'admin') {
           const doctorsResponse = await axios.get('http://localhost:5000/api/auth/doctors');
@@ -186,12 +236,20 @@ const PatientForm: React.FC = () => {
     setIsSaving(true);
     
     try {
-      if (isEditMode) {
-        await axios.put(`http://localhost:5000/api/patients/${id}`, formData);
-      } else {
-        await axios.post('http://localhost:5000/api/patients', formData);
-      }
-      
+    if (isEditMode) {
+  await axios.put(`http://localhost:5000/api/patients/${id}`, formData, {
+    headers: {
+      Authorization: `Bearer ${token}` // ✅ correct
+    }
+  });
+} else {
+  await axios.post('http://localhost:5000/api/patients', formData, {
+  headers: {
+    Authorization: `Bearer ${user?.token}`
+  }
+});
+}
+  
       navigate('/patients');
     } catch (error) {
       console.error('Error saving patient:', error);
@@ -702,14 +760,106 @@ const PatientForm: React.FC = () => {
               <button
                 type="button"
                 onClick={() => addArrayItem('familyHistory')}
-                className="mt-1 text-sm text-blue-600 hover:text-blue-800"
+                className="mt-1 text-sm text  -blue-600 hover:text-blue-800"
               >
                 + Add Family History
               </button>
             </div>
           </div>
         </div>
+{/* SUBJECTIVE INTAKE SECTION */}
+        <div className="mt-12 border-t pt-6">
+          <h2 className="text-2xl font-bold text-gray-800 mb-6">Subjective Intake</h2>
 
+          {/* Full Name and Date */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+            <input
+              type="text"
+              name="subjective.fullName"
+              value={formData.subjective.fullName}
+              onChange={handleChange}
+              placeholder="Full Name"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md"
+            />
+            <input
+              type="date"
+              name="subjective.date"
+              value={formData.subjective.date}
+              onChange={handleChange}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md"
+            />
+          </div>
+
+          {/* Body Part */}
+          <div className="mb-6">
+            <h3 className="text-lg font-semibold text-gray-800 mb-2">Body Part</h3>
+            <div className="flex flex-wrap gap-3 text-sm">
+              {['C/S', 'T/S', 'L/S', 'SH', 'ELB', 'WR', 'Hand', 'Finger(s)', 'Hip', 'KN', 'AN', 'Foot', 'Toe(s)', 'L Ant/Post/Lat/Med', 'R Ant/Post/Lat/Med', 'Headache', 'Frontal', 'Parietal', 'Temporal', 'Occipital', 'Head contusion'].map(part => (
+                <label key={part} className="flex items-center space-x-2">
+                  <input type="checkbox" name="subjective.bodyPart" value={part} onChange={handleChange} />
+                  <span>{part}</span>
+                </label>
+              ))}
+              <label className="flex items-center space-x-2">
+                <input type="checkbox" name="subjective.bodyPart" value="Other" onChange={handleChange} />
+                <span>Other</span>
+                <input type="text" name="subjective.bodyPartOther" placeholder="Specify" className="border rounded px-2 py-1 text-sm" />
+              </label>
+            </div>
+          </div>
+
+          {/* Severity */}
+          <div className="mb-6">
+            <h3 className="text-lg font-semibold text-gray-800 mb-2">Severity</h3>
+            <div className="flex flex-wrap gap-2 text-sm">
+              {['1','2','3','4','5','6','7','8','9','10','Mild','Moderate','Severe'].map(val => (
+                <label key={val} className="flex items-center space-x-2">
+                  <input type="radio" name="subjective.severity" value={val} onChange={handleChange} />
+                  <span>{val}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+
+          {/* Timing */}
+          <div className="mb-6">
+            <h3 className="text-lg font-semibold text-gray-800 mb-2">Timing</h3>
+            <div className="flex flex-wrap gap-4 text-sm">
+              {['Constant', 'Frequent', 'Intermittent', 'Occasional', 'Activity Dependent'].map(val => (
+                <label key={val} className="flex items-center space-x-2">
+                  <input type="radio" name="subjective.timing" value={val} onChange={handleChange} />
+                  <span>{val}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+
+          {/* Context */}
+          <div className="mb-6">
+            <h3 className="text-lg font-semibold text-gray-800 mb-2">Context</h3>
+            <div className="flex flex-wrap gap-4 text-sm">
+              {['New', 'Improving', 'Worsening', 'Recurrent'].map(val => (
+                <label key={val} className="flex items-center space-x-2">
+                  <input type="radio" name="subjective.context" value={val} onChange={handleChange} />
+                  <span>{val}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+
+          {/* Notes */}
+          <div className="mb-6">
+            <label htmlFor="subjective.notes" className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+            <textarea
+              name="subjective.notes"
+              id="subjective.notes"
+              rows={3}
+              value={formData.subjective.notes}
+              onChange={handleChange}
+              className="w-full border border-gray-300 rounded-md px-3 py-2"
+            ></textarea>
+          </div>
+        </div>
         <div className="mt-8 flex justify-end">
           <button
             type="button"
@@ -736,7 +886,10 @@ const PatientForm: React.FC = () => {
             )}
           </button>
         </div>
-      </form>
+      
+        
+
+</form>
     </div>
   );
 };

@@ -4,6 +4,65 @@ import Patient from '../models/Patient.js';
 
 const router = express.Router();
 
+
+// Cancel appointment
+router.patch('/:id/cancel', async (req, res) => {
+  try {
+    const appointment = await Appointment.findById(req.params.id);
+    
+    if (!appointment) {
+      return res.status(404).json({ message: 'Appointment not found' });
+    }
+    
+    // If user is a doctor, check if appointment is for them
+    if (req.user.role === 'doctor' && appointment.doctor.toString() !== req.user.id) {
+      return res.status(403).json({ message: 'Access denied' });
+    }
+    
+    // Update status to cancelled
+    appointment.status = 'cancelled';
+    appointment.notes = req.body.notes || appointment.notes;
+    await appointment.save();
+    
+    res.json({
+      message: 'Appointment cancelled successfully',
+      appointment
+    });
+  } catch (error) {
+    console.error('Cancel appointment error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// Mark appointment as completed
+router.patch('/:id/complete', async (req, res) => {
+  try {
+    const appointment = await Appointment.findById(req.params.id);
+    
+    if (!appointment) {
+      return res.status(404).json({ message: 'Appointment not found' });
+    }
+    
+    // If user is a doctor, check if appointment is for them
+    if (req.user.role === 'doctor' && appointment.doctor.toString() !== req.user.id) {
+      return res.status(403).json({ message: 'Access denied' });
+    }
+    
+    // Update status to completed
+    appointment.status = 'completed';
+    appointment.notes = req.body.notes || appointment.notes;
+    await appointment.save();
+    
+    res.json({
+      message: 'Appointment marked as completed',
+      appointment
+    });
+  } catch (error) {
+    console.error('Complete appointment error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
 // Get all appointments (with filtering)
 router.get('/', async (req, res) => {
   try {
@@ -205,60 +264,25 @@ router.put('/:id', async (req, res) => {
   }
 });
 
-// Cancel appointment
-router.patch('/:id/cancel', async (req, res) => {
-  try {
-    const appointment = await Appointment.findById(req.params.id);
-    
-    if (!appointment) {
-      return res.status(404).json({ message: 'Appointment not found' });
-    }
-    
-    // If user is a doctor, check if appointment is for them
-    if (req.user.role === 'doctor' && appointment.doctor.toString() !== req.user.id) {
-      return res.status(403).json({ message: 'Access denied' });
-    }
-    
-    // Update status to cancelled
-    appointment.status = 'cancelled';
-    appointment.notes = req.body.notes || appointment.notes;
-    await appointment.save();
-    
-    res.json({
-      message: 'Appointment cancelled successfully',
-      appointment
-    });
-  } catch (error) {
-    console.error('Cancel appointment error:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
-  }
-});
 
-// Mark appointment as completed
-router.patch('/:id/complete', async (req, res) => {
+// Delete appointment
+router.delete('/:id', async (req, res) => {
   try {
     const appointment = await Appointment.findById(req.params.id);
-    
     if (!appointment) {
       return res.status(404).json({ message: 'Appointment not found' });
     }
-    
-    // If user is a doctor, check if appointment is for them
+
+    // If doctor, make sure it's theirs
     if (req.user.role === 'doctor' && appointment.doctor.toString() !== req.user.id) {
       return res.status(403).json({ message: 'Access denied' });
     }
-    
-    // Update status to completed
-    appointment.status = 'completed';
-    appointment.notes = req.body.notes || appointment.notes;
-    await appointment.save();
-    
-    res.json({
-      message: 'Appointment marked as completed',
-      appointment
-    });
+
+    await Appointment.findByIdAndDelete(req.params.id);
+
+    res.json({ message: 'Appointment deleted successfully' });
   } catch (error) {
-    console.error('Complete appointment error:', error);
+    console.error('Delete appointment error:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 });

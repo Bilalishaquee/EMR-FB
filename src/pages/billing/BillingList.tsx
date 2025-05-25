@@ -291,9 +291,13 @@ const BillingList: React.FC = () => {
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                           {invoice.invoiceNumber}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {invoice.patient.firstName} {invoice.patient.lastName}
-                        </td>
+                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+  {invoice.patient
+  ? `${invoice.patient.firstName} ${invoice.patient.lastName}`
+  : 'Unknown Patient'}
+
+</td>
+
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                           {new Date(invoice.dateIssued).toLocaleDateString()}
                         </td>

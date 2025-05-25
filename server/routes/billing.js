@@ -1,7 +1,7 @@
 import express from 'express';
 import Billing from '../models/Billing.js';
 import Patient from '../models/Patient.js';
-
+import { authenticateToken } from '../middleware/authMiddleware.js'; // make sure this is at the top
 const router = express.Router();
 
 // Get all invoices (with filtering)
@@ -96,7 +96,10 @@ router.get('/:id', async (req, res) => {
 });
 
 // Create new invoice
-router.post('/', async (req, res) => {
+
+
+router.post('/', authenticateToken, async (req, res) => {
+
   try {
     const invoiceData = req.body;
     

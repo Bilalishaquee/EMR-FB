@@ -5,6 +5,22 @@ import { ArrowLeft, Printer, Download, Edit, Send, DollarSign } from 'lucide-rea
 import { useReactToPrint } from 'react-to-print';
 import { jsPDF } from 'jspdf';
 
+const getStatusColor = (status: string) => {
+  switch (status.toLowerCase()) {
+    case 'paid':
+      return 'bg-green-100 text-green-700';
+    case 'pending':
+      return 'bg-yellow-100 text-yellow-700';
+    case 'cancelled':
+      return 'bg-red-100 text-red-700';
+    case 'draft':
+      return 'bg-gray-100 text-gray-600';
+    default:
+      return 'bg-blue-100 text-blue-700';
+  }
+};
+
+
 interface Invoice {
   _id: string;
   invoiceNumber: string;
@@ -293,9 +309,9 @@ const InvoiceDetails: React.FC = () => {
               <div className="mt-4 md:mt-0 text-right">
                 <div className="text-gray-700">
                   <p className="font-medium">The Wellness Studio</p>
-                  <p>123 Healing Way</p>
-                  <p>Wellness City, WS 12345</p>
-                  <p>Phone: (555) 123-4567</p>
+                  <p>3605 Long Beach Blvd Suite 101</p>
+                  <p>Long Beach, CA 90807, USA</p>
+                  <p>Phone: (562) 980-0555</p>
                   <p>Email: billing@wellness-studio.com</p>
                 </div>
               </div>

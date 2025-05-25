@@ -3,8 +3,10 @@ dotenv.config();
 
 console.log('Loaded MONGODB_URI:', process.env.MONGODB_URI);
 
+
 import express from 'express';
 import mongoose from 'mongoose';
+import visitRoutes from './routes/visits.js';
 import cors from 'cors';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
@@ -23,7 +25,7 @@ const PORT = process.env.PORT || 5000;
 app.use(cors({
   origin: 'http://localhost:5173',
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+ methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
@@ -45,6 +47,8 @@ mongoose.connect(process.env.MONGODB_URI)
       res.status(200).json({ status: 'Server is running' });
     });
 
+
+    app.use('/api/visits', authenticateToken, visitRoutes);
     // Error handler
     app.use((err, req, res, next) => {
       console.error(err.stack);

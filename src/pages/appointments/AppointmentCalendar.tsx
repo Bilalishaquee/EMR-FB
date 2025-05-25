@@ -179,7 +179,10 @@ const AppointmentCalendar: React.FC = () => {
                                 {appointment.time.start} - {appointment.time.end}
                               </p>
                               <p className="text-sm text-gray-600">
-                                {appointment.patient.firstName} {appointment.patient.lastName}
+                                {appointment.patient?.firstName && appointment.patient?.lastName
+  ? `${appointment.patient.firstName} ${appointment.patient.lastName}`
+  : 'Unknown Patient'}
+
                               </p>
                               <p className="text-xs text-gray-500 capitalize">
                                 {appointment.type}

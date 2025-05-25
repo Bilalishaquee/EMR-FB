@@ -6,6 +6,7 @@ import { ArrowLeft, Save, Plus, Trash2 } from 'lucide-react';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 
+
 interface Patient {
   _id: string;
   firstName: string;
@@ -30,19 +31,21 @@ const InvoiceForm: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   
-  const [formData, setFormData] = useState({
-    patient: '',
-    visit: '',
-    dateIssued: new Date(),
-    dueDate: new Date(new Date().setDate(new Date().getDate() + 30)),
-    items: [{ description: '', code: '', quantity: 1, unitPrice: 0, total: 0 }],
-    subtotal: 0,
-    tax: 0,
-    discount: 0,
-    total: 0,
-    status: 'draft',
-    notes: ''
-  });
+ const [formData, setFormData] = useState({
+  invoiceNumber: '', // ✅ required field
+  patient: '',
+  visit: '',
+  dateIssued: new Date(),
+  dueDate: new Date(new Date().setDate(new Date().getDate() + 30)),
+  items: [{ description: '', code: '', quantity: 1, unitPrice: 0, total: 0 }],
+  subtotal: 0,
+  tax: 0,
+  discount: 0,
+  total: 0,
+  status: 'draft',
+  notes: ''
+});
+
   
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -60,18 +63,20 @@ const InvoiceForm: React.FC = () => {
           const invoiceData = invoiceResponse.data;
           
           setFormData({
-            patient: invoiceData.patient._id,
-            visit: invoiceData.visit?._id || '',
-            dateIssued: new Date(invoiceData.dateIssued),
-            dueDate: new Date(invoiceData.dueDate),
-            items: invoiceData.items,
-            subtotal: invoiceData.subtotal,
-            tax: invoiceData.tax,
-            discount: invoiceData.discount,
-            total: invoiceData.total,
-            status: invoiceData.status,
-            notes: invoiceData.notes || ''
-          });
+  invoiceNumber: invoiceData.invoiceNumber || '',
+  patient: invoiceData.patient?._id || '',
+  visit: invoiceData.visit?._id || '',
+  dateIssued: new Date(invoiceData.dateIssued),
+  dueDate: new Date(invoiceData.dueDate),
+  items: invoiceData.items || [],
+  subtotal: invoiceData.subtotal || 0,
+  tax: invoiceData.tax || 0,
+  discount: invoiceData.discount || 0,
+  total: invoiceData.total || 0,
+  status: invoiceData.status || 'draft',
+  notes: invoiceData.notes || ''
+});
+
           
           // Fetch visits for this patient
           if (invoiceData.patient._id) {
@@ -190,6 +195,8 @@ const InvoiceForm: React.FC = () => {
     // Required fields
     if (!formData.patient) newErrors.patient = 'Patient is required';
     if (formData.items.length === 0) newErrors.items = 'At least one item is required';
+    if (!formData.invoiceNumber) newErrors.invoiceNumber = 'Invoice number is required';
+
     
     // Validate items
     formData.items.forEach((item, index) => {
@@ -218,10 +225,12 @@ const InvoiceForm: React.FC = () => {
     
     try {
       const invoiceData = {
-        ...formData,
-        dateIssued: formData.dateIssued.toISOString(),
-        dueDate: formData.dueDate.toISOString()
-      };
+  ...formData,
+  dateIssued: formData.dateIssued.toISOString(),
+  dueDate: formData.dueDate.toISOString(),
+  visit: formData.visit || undefined, // 👈 ensures empty string is not sent
+};
+
       
       if (isEditMode) {
         await axios.put(`http://localhost:5000/api/billing/${id}`, invoiceData);
@@ -335,6 +344,22 @@ const InvoiceForm: React.FC = () => {
             />
             {errors.dueDate && <p className="mt-1 text-sm text-red-600">{errors.dueDate}</p>}
           </div>
+<div>
+  <label htmlFor="invoiceNumber" className="block text-sm font-medium text-gray-700 mb-1">
+    Invoice Number*
+  </label>
+  <input
+    type="text"
+    id="invoiceNumber"
+    name="invoiceNumber"
+    value={formData.invoiceNumber}
+    onChange={handleChange}
+    className={`w-full px-3 py-2 border ${errors.invoiceNumber ? 'border-red-500' : 'border-gray-300'} rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500`}
+  />
+  {errors.invoiceNumber && (
+    <p className="mt-1 text-sm text-red-600">{errors.invoiceNumber}</p>
+  )}
+</div>
 
           {/* Status (for edit mode) */}
           {isEditMode && (

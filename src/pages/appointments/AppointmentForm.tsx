@@ -6,6 +6,7 @@ import { ArrowLeft, Save, Trash2, CheckCircle, XCircle } from 'lucide-react';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 
+
 interface Patient {
   _id: string;
   firstName: string;
@@ -174,36 +175,60 @@ const AppointmentForm: React.FC = () => {
     }
   };
 
-  const handleDelete = async () => {
-    try {
-      await axios.delete(`http://localhost:5000/api/appointments/${id}`);
-      navigate('/appointments');
-    } catch (error) {
-      console.error('Error deleting appointment:', error);
-    }
-  };
+const handleDelete = async () => {
+  try {
+    const token = localStorage.getItem('token');
+    await axios.delete(`http://localhost:5000/api/appointments/${id}`, {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    });
+    navigate('/appointments');
+  } catch (error) {
+    console.error('Error deleting appointment:', error);
+  }
+};
 
-  const handleComplete = async () => {
-    try {
-      await axios.patch(`http://localhost:5000/api/appointments/${id}/complete`, {
-        notes: formData.notes
-      });
-      navigate('/appointments');
-    } catch (error) {
-      console.error('Error completing appointment:', error);
-    }
-  };
 
-  const handleCancel = async () => {
-    try {
-      await axios.patch(`http://localhost:5000/api/appointments/${id}/cancel`, {
-        notes: formData.notes
-      });
-      navigate('/appointments');
-    } catch (error) {
-      console.error('Error cancelling appointment:', error);
-    }
-  };
+const token = localStorage.getItem('token');
+
+const handleComplete = async () => {
+  try {
+   await axios.patch(
+  `http://localhost:5000/api/appointments/${id}/complete`,
+  { notes: formData.notes },
+  {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  }
+);
+
+    navigate('/appointments');
+  } catch (error) {
+    console.error('Error marking as completed:', error);
+  }
+};
+
+
+ const handleCancel = async () => {
+  try {
+    await axios.patch(
+  `http://localhost:5000/api/appointments/${id}/cancel`,
+  { notes: formData.notes },
+  {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  }
+);
+
+    navigate('/appointments');
+  } catch (error) {
+    console.error('Error cancelling appointment:', error);
+  }
+};
+
 
   if (isLoading) {
     return (

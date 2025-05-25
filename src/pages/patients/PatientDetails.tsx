@@ -49,6 +49,15 @@ interface Patient {
     surgeries: string[];
     familyHistory: string[];
   };
+  subjective?: {
+    fullName: string;
+    date: string;
+    severity: string;
+    timing: string;
+    context: string;
+    notes: string;
+    bodyPart: string[];
+  };
   assignedDoctor: {
     _id: string;
     firstName: string;
@@ -58,7 +67,6 @@ interface Patient {
   createdAt: string;
   updatedAt: string;
 }
-
 interface Visit {
   _id: string;
   patient: string;
@@ -559,6 +567,49 @@ const PatientDetails: React.FC = () => {
                 </div>
               )}
             </div>
+
+{/* Subjective Intake */}
+<div className="bg-white shadow rounded-lg overflow-hidden md:col-span-2">
+  <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+    <h2 className="text-lg font-medium text-gray-900">Subjective Intake</h2>
+  </div>
+  <div className="px-6 py-4">
+    <dl className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-6">
+      <div>
+        <dt className="text-sm font-medium text-gray-500">Full Name</dt>
+        <dd className="mt-1 text-sm text-gray-900">{patient.subjective?.fullName || 'N/A'}</dd>
+      </div>
+      <div>
+        <dt className="text-sm font-medium text-gray-500">Date</dt>
+        <dd className="mt-1 text-sm text-gray-900">{patient.subjective?.date || 'N/A'}</dd>
+      </div>
+      <div>
+        <dt className="text-sm font-medium text-gray-500">Severity</dt>
+        <dd className="mt-1 text-sm text-gray-900">{patient.subjective?.severity || 'N/A'}</dd>
+      </div>
+      <div className="md:col-span-2">
+        <dt className="text-sm font-medium text-gray-500">Notes</dt>
+        <dd className="mt-1 text-sm text-gray-900 whitespace-pre-wrap">{patient.subjective?.notes || 'N/A'}</dd>
+      </div>
+      <div className="md:col-span-2">
+        <dt className="text-sm font-medium text-gray-500">Body Parts</dt>
+        <dd className="mt-1 text-sm text-gray-900">
+          {patient.subjective?.bodyPart?.length
+            ? patient.subjective.bodyPart.join(', ')
+            : 'N/A'}
+        </dd>
+      </div>
+      <div className="md:col-span-2">
+        <dt className="text-sm font-medium text-gray-500">Timing</dt>
+        <dd className="mt-1 text-sm text-gray-900">{patient.subjective?.timing || 'N/A'}</dd>
+      </div>
+      <div className="md:col-span-2">
+        <dt className="text-sm font-medium text-gray-500">Context</dt>
+        <dd className="mt-1 text-sm text-gray-900">{patient.subjective?.context || 'N/A'}</dd>
+      </div>
+    </dl>
+  </div>
+</div>
 
             {/* Insurance Information */}
             <div className="bg-white shadow rounded-lg overflow-hidden md:col-span-2">
