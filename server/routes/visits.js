@@ -31,7 +31,10 @@ router.post('/', authenticateToken, async (req, res) => {
 // Get all visits for a patient
 router.get('/patient/:patientId', authenticateToken, async (req, res) => {
   try {
-    const visits = await Visit.find({ patient: req.params.patientId }).populate('doctor');
+    const visits = await Visit.find({ patient: req.params.patientId })
+      .populate('doctor')
+      .populate('patient');
+
     res.json(visits);
   } catch (error) {
     console.error('Error fetching visits:', error);

@@ -245,9 +245,14 @@ const PatientForm: React.FC = () => {
 } else {
   await axios.post('http://localhost:5000/api/patients', formData, {
   headers: {
-    Authorization: `Bearer ${user?.token}`
+    Authorization: `Bearer ${token}` // ✅ use the `token` directly from useAuth()
   }
 });
+
+
+console.log('Using token:', token);
+
+
 }
   
       navigate('/patients');

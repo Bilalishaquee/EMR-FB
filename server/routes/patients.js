@@ -175,7 +175,7 @@ router.post('/:id/visits/initial', async (req, res) => {
       ...req.body,
       patient: req.params.id,
       doctor: req.user.id,
-      visitType: 'initial'
+     
     };
     
     const visit = new InitialVisit(visitData);
@@ -211,12 +211,12 @@ router.post('/:id/visits/followup', async (req, res) => {
       return res.status(404).json({ message: 'Previous visit not found' });
     }
     
-    const visitData = {
-      ...req.body,
-      patient: req.params.id,
-      doctor: req.user.id,
-      visitType: 'followup'
-    };
+   const visitData = {
+  ...req.body,
+  patient: req.params.id,
+  doctor: req.user.id
+  // ✅ visitType should NOT be included
+};
     
     const visit = new FollowupVisit(visitData);
     await visit.save();
@@ -249,7 +249,7 @@ router.post('/:id/visits/discharge', async (req, res) => {
       ...req.body,
       patient: req.params.id,
       doctor: req.user.id,
-      visitType: 'discharge'
+      
     };
     
     const visit = new DischargeVisit(visitData);

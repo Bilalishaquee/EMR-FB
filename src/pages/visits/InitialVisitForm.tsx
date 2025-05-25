@@ -281,23 +281,61 @@ const InitialVisitForm: React.FC = () => {
     setLocalFormData(null);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsSaving(true);
+//   const handleSubmit = async (e: React.FormEvent) => {
+//     e.preventDefault();
+//     setIsSaving(true);
     
-    try {
-      await axios.post(`http://localhost:5000/api/patients/${id}/visits/initial`, formData);
+//     try {
+//       // await axios.post(`http://localhost:5000/api/patients/${id}/visits/initial`, formData);
+//      await axios.post(`http://localhost:5000/api/patients/${id}/visits/initial`, {
+//   ...formData,
+//   visitType: 'initial',
+//   doctor: user?._id,
+// });
+
       
-      // Clear local storage after successful submission
-      localStorage.removeItem(`initialVisit_${id}`);
+//       // Clear local storage after successful submission
+//       localStorage.removeItem(`initialVisit_${id}`);
       
-      navigate(`/patients/${id}`);
-    } catch (error) {
-      console.error('Error saving visit:', error);
-    } finally {
-      setIsSaving(false);
-    }
-  };
+//       navigate(`/patients/${id}`);
+//     } catch (error) {
+//       console.error('Error saving visit:', error);
+//     } finally {
+//       setIsSaving(false);
+//     }
+//   };
+const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+  setIsSaving(true);
+
+  try {
+    const cleanedData = {
+      ...formData,
+      visitType: 'initial',
+      doctor: user?._id,
+      vitalSigns: {
+        temperature: Number(formData.vitalSigns.temperature),
+        heartRate: Number(formData.vitalSigns.heartRate),
+        respiratoryRate: Number(formData.vitalSigns.respiratoryRate),
+        bloodPressure: formData.vitalSigns.bloodPressure,
+        oxygenSaturation: Number(formData.vitalSigns.oxygenSaturation),
+        height: Number(formData.vitalSigns.height),
+        weight: Number(formData.vitalSigns.weight),
+      },
+    };
+
+    console.log('Submitting visit data:', cleanedData);
+    await axios.post(`http://localhost:5000/api/patients/${id}/visits/initial`, cleanedData);
+
+    localStorage.removeItem(`initialVisit_${id}`);
+    navigate(`/patients/${id}`);
+  } catch (error) {
+    console.error('Error saving visit:', error);
+  } finally {
+    setIsSaving(false);
+  }
+};
+
 
   if (isLoading) {
     return (
