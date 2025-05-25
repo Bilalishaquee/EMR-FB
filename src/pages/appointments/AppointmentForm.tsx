@@ -23,8 +23,12 @@ const AppointmentForm: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const location = useLocation();
-  const { user } = useAuth();
+  const { user, token } = useAuth();
   const isEditMode = !!id;
+  
+  console.log('Initial user object:', user);
+  console.log('User role:', user?.role);
+  console.log('User ID:', user?.id);
   
   const [patients, setPatients] = useState<Patient[]>([]);
   const [doctors, setDoctors] = useState<Doctor[]>([]);
@@ -34,17 +38,27 @@ const AppointmentForm: React.FC = () => {
   const [showCompleteModal, setShowCompleteModal] = useState(false);
   const [showCancelModal, setShowCancelModal] = useState(false);
   
-  const [formData, setFormData] = useState({
-    patient: '',
-    doctor: user?.role === 'doctor' ? user.id : '',
-    date: new Date(),
-    time: {
-      start: '09:00',
-      end: '09:30'
-    },
-    type: 'followup',
-    status: 'scheduled',
-    notes: ''
+  const [formData, setFormData] = useState(() => {
+    const initialData = {
+      patient: '',
+      doctor: '',
+      date: new Date(),
+      time: {
+        start: '09:00',
+        end: '09:30'
+      },
+      type: 'followup',
+      status: 'scheduled',
+      notes: ''
+    };
+
+    // Set doctor ID if user is a doctor
+    if (user?.role === 'doctor' && user?._id) {
+      initialData.doctor = user._id;
+      console.log('Setting initial doctor ID:', user._id);
+    }
+
+    return initialData;
   });
   
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -95,6 +109,15 @@ const AppointmentForm: React.FC = () => {
     fetchData();
   }, [id, isEditMode, user?.role, location.search]);
 
+  // Update doctor ID when user changes
+  useEffect(() => {
+    console.log('User changed:', user);
+    if (user?.role === 'doctor' && user?._id) {
+      console.log('Updating doctor ID to:', user._id);
+      setFormData(prev => ({ ...prev, doctor: user._id }));
+    }
+  }, [user]);
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     
@@ -103,7 +126,7 @@ const AppointmentForm: React.FC = () => {
       setFormData(prev => ({
         ...prev,
         [parent]: {
-          ...prev[parent as keyof typeof prev],
+          ...(prev[parent as keyof typeof prev] as Record<string, any>),
           [child]: value
         }
       }));
@@ -143,136 +166,105 @@ const AppointmentForm: React.FC = () => {
     return Object.keys(newErrors).length === 0;
   };
 
-  // const handleSubmit = async (e: React.FormEvent) => {
-  //   e.preventDefault();
-    
-  //   if (!validateForm()) {
-  //     return;
-  //   }
-    
-  //   setIsSaving(true);
-    
-  //   try {
-  //     const appointmentData = {
-  //       ...formData,
-  //       date: formData.date.toISOString().split('T')[0]
-  //     };
-      
-  //     if (isEditMode) {
-  //       await axios.put(`http://localhost:5000/api/appointments/${id}`, appointmentData);
-  //     } else {
-  //       await axios.post('http://localhost:5000/api/appointments', appointmentData);
-  //     }
-      
-  //     navigate('/appointments');
-  //   } catch (error: any) {
-  //     console.error('Error saving appointment:', error);
-  //     if (error.response?.data?.message) {
-  //       alert(error.response.data.message);
-  //     }
-  //   } finally {
-  //     setIsSaving(false);
-  //   }
-  // };
-const handleSubmit = async (e: React.FormEvent) => {
-  console.log('Submitting appointment:', formData);
-  e.preventDefault();
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    console.log('Submitting appointment - Current user:', user);
+    console.log('Current form data:', formData);
 
-  if (!validateForm()) return;
+    if (!validateForm()) return;
 
-  setIsSaving(true);
+    setIsSaving(true);
 
-  try {
-    const appointmentData = {
-      ...formData,
-      date: formData.date.toISOString().split('T')[0]
-    };
+    try {
+      const appointmentData = {
+        ...formData,
+        date: formData.date.toISOString().split('T')[0]
+      };
 
-    // 👇 Assign doctor automatically if logged-in user is doctor
-    if (user?.role === 'doctor') {
-      console.log('Auth user:', user);
-      appointmentData.doctor = user._id;
-    }
-
-    // 👇 Attach token to every request
-    const config = {
-      headers: {
-        Authorization: `Bearer ${user?.token}`
+      // Ensure doctor ID is set for doctor users
+      if (user?.role === 'doctor' && user?._id) {
+        appointmentData.doctor = user._id;
+        console.log('Setting doctor ID in appointment data:', user._id);
       }
-    };
 
-    if (isEditMode) {
-      await axios.put(`http://localhost:5000/api/appointments/${id}`, appointmentData, config);
-    } else {
-      await axios.post('http://localhost:5000/api/appointments', appointmentData, config);
-    }
+      console.log('Final appointment data:', appointmentData);
 
-    navigate('/appointments');
-  } catch (error: any) {
-    console.error('Error saving appointment:', error);
-    if (error.response?.data?.message) {
-      alert(error.response.data.message);
-    }
-  } finally {
-    setIsSaving(false);
-  }
-};
+      const config = {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      };
 
-
-const handleDelete = async () => {
-  try {
-    const token = localStorage.getItem('token');
-    await axios.delete(`http://localhost:5000/api/appointments/${id}`, {
-      headers: {
-        Authorization: `Bearer ${token}`
+      let response;
+      if (isEditMode) {
+        response = await axios.put(`http://localhost:5000/api/appointments/${id}`, appointmentData, config);
+      } else {
+        response = await axios.post('http://localhost:5000/api/appointments', appointmentData, config);
       }
-    });
-    navigate('/appointments');
-  } catch (error) {
-    console.error('Error deleting appointment:', error);
-  }
-};
+      
+      console.log('Server response:', response.data);
+      navigate('/appointments');
+    } catch (error: any) {
+      console.error('Error saving appointment:', error);
+      console.error('Error details:', error.response?.data);
+      if (error.response?.data?.message) {
+        alert(error.response.data.message);
+      } else {
+        alert('Failed to save appointment. Please try again.');
+      }
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
+  const handleDelete = async () => {
+    try {
+      await axios.delete(`http://localhost:5000/api/appointments/${id}`, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+      navigate('/appointments');
+    } catch (error) {
+      console.error('Error deleting appointment:', error);
+    }
+  };
 
-const token = localStorage.getItem('token');
+  const handleComplete = async () => {
+    try {
+      await axios.patch(
+        `http://localhost:5000/api/appointments/${id}/complete`,
+        { notes: formData.notes },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
 
-const handleComplete = async () => {
-  try {
-   await axios.patch(
-  `http://localhost:5000/api/appointments/${id}/complete`,
-  { notes: formData.notes },
-  {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  }
-);
+      navigate('/appointments');
+    } catch (error) {
+      console.error('Error marking as completed:', error);
+    }
+  };
 
-    navigate('/appointments');
-  } catch (error) {
-    console.error('Error marking as completed:', error);
-  }
-};
+  const handleCancel = async () => {
+    try {
+      await axios.patch(
+        `http://localhost:5000/api/appointments/${id}/cancel`,
+        { notes: formData.notes },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
 
-
- const handleCancel = async () => {
-  try {
-    await axios.patch(
-  `http://localhost:5000/api/appointments/${id}/cancel`,
-  { notes: formData.notes },
-  {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  }
-);
-
-    navigate('/appointments');
-  } catch (error) {
-    console.error('Error cancelling appointment:', error);
-  }
-};
-
+      navigate('/appointments');
+    } catch (error) {
+      console.error('Error cancelling appointment:', error);
+    }
+  };
 
   if (isLoading) {
     return (
