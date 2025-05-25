@@ -31,7 +31,7 @@ const Login: React.FC = () => {
       <div className="max-w-md w-full space-y-8 bg-white rounded-3xl shadow-2xl p-10 border border-blue-200">
         <div>
           <div className="flex justify-center mb-4">
-  <img src="/logo.png" alt="Logo" className="h-28 w-auto mb-2 rounded-xl -mt-10" style={{boxShadow: '0 6px 24px 0 rgba(0,0,0,0.05)'}} />
+  <img src="/logo.png" alt="Logo" className="h-28 w-auto mb-2 rounded-none -mt-6" style={{background:'#fff'}} />
 </div>
           
         </div>
