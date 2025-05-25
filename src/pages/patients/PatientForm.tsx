@@ -76,7 +76,7 @@ const PatientForm: React.FC = () => {
       surgeries: [''],
       familyHistory: ['']
     },
-    assignedDoctor: user?.role === 'doctor' ? user.id : '',
+    assignedDoctor: user?.role === 'doctor' ? (user.id || user._id) : '',
     status: 'active'
   });
   const [errors, setErrors] = useState<Record<string, string>>({});

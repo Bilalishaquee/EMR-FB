@@ -37,6 +37,7 @@ const AppointmentForm: React.FC = () => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showCompleteModal, setShowCompleteModal] = useState(false);
   const [showCancelModal, setShowCancelModal] = useState(false);
+  const [showConflictModal, setShowConflictModal] = useState(false);
   
   const [formData, setFormData] = useState(() => {
     const initialData = {
@@ -207,10 +208,12 @@ const AppointmentForm: React.FC = () => {
     } catch (error: any) {
       console.error('Error saving appointment:', error);
       console.error('Error details:', error.response?.data);
-      if (error.response?.data?.message) {
-        alert(error.response.data.message);
+      if (error.response?.data?.message === 'Conflicting appointment exists') {
+        setShowConflictModal(true);
+      } else if (error.response?.data?.message) {
+        window.alert(error.response.data.message);
       } else {
-        alert('Failed to save appointment. Please try again.');
+        window.alert('Failed to save appointment. Please try again.');
       }
     } finally {
       setIsSaving(false);
@@ -651,6 +654,36 @@ const AppointmentForm: React.FC = () => {
                 </button>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+      {/* Conflict Appointment Modal */}
+      {showConflictModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+          <div className="relative bg-white rounded-2xl shadow-2xl max-w-md w-full mx-4 p-8 flex flex-col items-center animate-fadeIn">
+            <button
+              className="absolute top-3 right-3 text-gray-400 hover:text-gray-600 text-2xl font-bold focus:outline-none"
+              onClick={() => setShowConflictModal(false)}
+              aria-label="Close"
+            >
+              &times;
+            </button>
+            <div className="flex flex-col items-center mb-4">
+              <span className="flex items-center justify-center h-16 w-16 rounded-full bg-red-100 mb-4">
+                <XCircle className="h-10 w-10 text-red-500" />
+              </span>
+              <h2 className="text-2xl font-semibold text-gray-900 mb-2 text-center">Time Slot Unavailable</h2>
+              <p className="text-lg text-gray-700 text-center font-medium">
+                Please choose another slot date and time,<br />this one is taken.
+              </p>
+            </div>
+            <button
+              type="button"
+              className="mt-4 px-6 py-2 rounded-lg bg-blue-600 text-white text-lg font-semibold shadow hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-400"
+              onClick={() => setShowConflictModal(false)}
+            >
+              OK
+            </button>
           </div>
         </div>
       )}
