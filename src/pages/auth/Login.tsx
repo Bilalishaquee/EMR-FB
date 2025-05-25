@@ -28,10 +28,10 @@ const Login: React.FC = () => {
 
   return (
     <div className="min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8" style={{ backgroundImage: 'url(/bg-tech.jpg)', backgroundSize: 'cover', backgroundPosition: 'center' }}>
-      <div className="max-w-md w-full space-y-8 bg-white rounded-2xl shadow-xl p-8">
+      <div className="max-w-md w-full space-y-8 bg-white/70 rounded-3xl shadow-2xl p-10 border border-blue-200 backdrop-blur-md">
         <div>
           <div className="flex justify-center mb-4">
-  <img src="/logo.png" alt="Logo" className="h-32 w-auto" />
+  <img src="/logo.png" alt="Logo" className="h-36 w-auto shadow-2xl mb-2" />
 </div>
           
         </div>
@@ -55,7 +55,7 @@ const Login: React.FC = () => {
                 name="username"
                 type="text"
                 required
-                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
+                className="appearance-none rounded-xl relative block w-full px-4 py-3 border border-gray-300 placeholder-gray-400 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-500 focus:z-10 sm:text-base transition-all duration-150 mb-4 shadow-sm bg-white/90"
                 placeholder="Username"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
@@ -70,7 +70,7 @@ const Login: React.FC = () => {
                 name="password"
                 type="password"
                 required
-                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
+                className="appearance-none rounded-xl relative block w-full px-4 py-3 border border-gray-300 placeholder-gray-400 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-500 focus:z-10 sm:text-base transition-all duration-150 mb-4 shadow-sm bg-white/90"
                 placeholder="Password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
@@ -82,7 +82,7 @@ const Login: React.FC = () => {
             <button
               type="submit"
               disabled={isLoading}
-              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-lg text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-150 disabled:opacity-50"
+              className="group relative w-full flex justify-center py-3 px-4 border-none text-lg font-semibold rounded-xl text-white bg-gradient-to-r from-blue-500 via-purple-500 to-blue-600 shadow-lg hover:from-blue-600 hover:to-purple-600 hover:scale-105 active:scale-95 focus:outline-none focus:ring-4 focus:ring-blue-300 transition-all duration-200 disabled:opacity-50"
             >
               {isLoading ? (
                 <span className="absolute left-0 inset-y-0 flex items-center pl-3">
@@ -93,10 +93,10 @@ const Login: React.FC = () => {
             </button>
           </div>
 
-          <div className="text-sm text-center">
+          <div className="text-base text-center mt-6">
             <Link
               to="/register"
-              className="font-medium text-blue-600 hover:text-blue-500"
+              className="font-semibold text-blue-600 underline underline-offset-4 hover:text-purple-500 transition-colors duration-200"
             >
               Don't have an account? Register
             </Link>
