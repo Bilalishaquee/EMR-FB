@@ -1,6 +1,7 @@
 import express from 'express';
 import Appointment from '../models/Appointment.js';
 import Patient from '../models/Patient.js';
+import { authenticateToken } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
 

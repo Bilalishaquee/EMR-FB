@@ -143,37 +143,81 @@ const AppointmentForm: React.FC = () => {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  // const handleSubmit = async (e: React.FormEvent) => {
+  //   e.preventDefault();
     
-    if (!validateForm()) {
-      return;
-    }
+  //   if (!validateForm()) {
+  //     return;
+  //   }
     
-    setIsSaving(true);
+  //   setIsSaving(true);
     
-    try {
-      const appointmentData = {
-        ...formData,
-        date: formData.date.toISOString().split('T')[0]
-      };
+  //   try {
+  //     const appointmentData = {
+  //       ...formData,
+  //       date: formData.date.toISOString().split('T')[0]
+  //     };
       
-      if (isEditMode) {
-        await axios.put(`http://localhost:5000/api/appointments/${id}`, appointmentData);
-      } else {
-        await axios.post('http://localhost:5000/api/appointments', appointmentData);
-      }
+  //     if (isEditMode) {
+  //       await axios.put(`http://localhost:5000/api/appointments/${id}`, appointmentData);
+  //     } else {
+  //       await axios.post('http://localhost:5000/api/appointments', appointmentData);
+  //     }
       
-      navigate('/appointments');
-    } catch (error: any) {
-      console.error('Error saving appointment:', error);
-      if (error.response?.data?.message) {
-        alert(error.response.data.message);
-      }
-    } finally {
-      setIsSaving(false);
+  //     navigate('/appointments');
+  //   } catch (error: any) {
+  //     console.error('Error saving appointment:', error);
+  //     if (error.response?.data?.message) {
+  //       alert(error.response.data.message);
+  //     }
+  //   } finally {
+  //     setIsSaving(false);
+  //   }
+  // };
+const handleSubmit = async (e: React.FormEvent) => {
+  console.log('Submitting appointment:', formData);
+  e.preventDefault();
+
+  if (!validateForm()) return;
+
+  setIsSaving(true);
+
+  try {
+    const appointmentData = {
+      ...formData,
+      date: formData.date.toISOString().split('T')[0]
+    };
+
+    // 👇 Assign doctor automatically if logged-in user is doctor
+    if (user?.role === 'doctor') {
+      console.log('Auth user:', user);
+      appointmentData.doctor = user._id;
     }
-  };
+
+    // 👇 Attach token to every request
+    const config = {
+      headers: {
+        Authorization: `Bearer ${user?.token}`
+      }
+    };
+
+    if (isEditMode) {
+      await axios.put(`http://localhost:5000/api/appointments/${id}`, appointmentData, config);
+    } else {
+      await axios.post('http://localhost:5000/api/appointments', appointmentData, config);
+    }
+
+    navigate('/appointments');
+  } catch (error: any) {
+    console.error('Error saving appointment:', error);
+    if (error.response?.data?.message) {
+      alert(error.response.data.message);
+    }
+  } finally {
+    setIsSaving(false);
+  }
+};
+
 
 const handleDelete = async () => {
   try {
