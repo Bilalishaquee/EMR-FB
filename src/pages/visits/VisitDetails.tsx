@@ -23,40 +23,40 @@ interface Visit {
   __t: string;
   
   // Initial Visit fields
-  chiefComplaint?: string;
-  historyOfPresentIllness?: string;
-  vitalSigns?: {
-    temperature: number;
-    heartRate: number;
-    respiratoryRate: number;
-    bloodPressure: string;
-    oxygenSaturation: number;
-    height: number;
-    weight: number;
-  };
-  physicalExamination?: {
-    general: string;
-    heent: string;
-    cardiovascular: string;
-    respiratory: string;
-    gastrointestinal: string;
-    musculoskeletal: string;
-    neurological: string;
-    skin: string;
-  };
-  assessment?: string;
-  plan?: {
-    diagnosis: string[];
-    medications: {
-      name: string;
-      dosage: string;
-      frequency: string;
-      duration: string;
-    }[];
-    labTests: string[];
-    imaging: string[];
-    followUpPlan: string;
-  };
+// Initial Visit fields (new structure)
+chiefComplaint?: string;
+chiropracticAdjustment?: string[];
+chiropracticOther?: string;
+acupuncture?: string[];
+acupunctureOther?: string;
+physiotherapy?: string[];
+rehabilitationExercises?: string[];
+
+durationFrequency?: {
+  timesPerWeek?: number;
+  reEvalInWeeks?: number;
+};
+
+referrals?: string[];
+
+imaging?: {
+  xray?: string[];
+  mri?: string[];
+  ct?: string[];
+};
+
+diagnosticUltrasound?: string;
+nerveStudy?: string[];
+
+restrictions?: {
+  avoidActivityWeeks?: number;
+  liftingLimitLbs?: number;
+  avoidProlongedSitting?: boolean;
+};
+
+disabilityDuration?: string;
+otherNotes?: string;
+
   
   // Follow-up Visit fields
   previousVisit?: string;
@@ -258,241 +258,163 @@ const VisitDetails: React.FC = () => {
           </div>
         </div>
 
-        {/* Initial Visit Content */}
-        {visit.__t === 'InitialVisit' && (
-          <div className="space-y-6">
-            {/* Chief Complaint */}
-            <div>
-              <h3 className="text-lg font-medium text-gray-900 mb-2">Chief Complaint</h3>
-              <p className="text-gray-800">{visit.chiefComplaint}</p>
+       {/* Initial Visit Content */}
+       {visit.visitType === 'initial' && (
+  <div className="space-y-6">
+
+    {/* Chief Complaint */}
+    {visit.chiefComplaint && (
+      <div>
+        <h3 className="text-lg font-medium text-gray-900 mb-2">Chief Complaint</h3>
+        <p className="text-gray-800">{visit.chiefComplaint}</p>
+      </div>
+    )}
+
+    {/* Chiropractic Adjustment */}
+    {visit.chiropracticAdjustment?.length > 0 && (
+      <div>
+        <h3 className="text-lg font-medium text-gray-900 mb-2">Chiropractic Adjustment</h3>
+        <ul className="list-disc pl-5 text-gray-800">
+          {visit.chiropracticAdjustment.map((item, idx) => (
+            <li key={idx}>{item}</li>
+          ))}
+        </ul>
+        {visit.chiropracticOther && <p className="text-gray-800 mt-1"><strong>Other:</strong> {visit.chiropracticOther}</p>}
+      </div>
+    )}
+
+    {/* Acupuncture */}
+    {visit.acupuncture?.length > 0 && (
+      <div>
+        <h3 className="text-lg font-medium text-gray-900 mb-2">Acupuncture (Cupping)</h3>
+        <ul className="list-disc pl-5 text-gray-800">
+          {visit.acupuncture.map((item, idx) => (
+            <li key={idx}>{item}</li>
+          ))}
+        </ul>
+        {visit.acupunctureOther && <p className="text-gray-800 mt-1"><strong>Other:</strong> {visit.acupunctureOther}</p>}
+      </div>
+    )}
+
+    {/* Physiotherapy */}
+    {visit.physiotherapy?.length > 0 && (
+      <div>
+        <h3 className="text-lg font-medium text-gray-900 mb-2">Physiotherapy</h3>
+        <ul className="list-disc pl-5 text-gray-800">
+          {visit.physiotherapy.map((item, idx) => (
+            <li key={idx}>{item}</li>
+          ))}
+        </ul>
+      </div>
+    )}
+
+    {/* Rehabilitation Exercises */}
+    {visit.rehabilitationExercises?.length > 0 && (
+      <div>
+        <h3 className="text-lg font-medium text-gray-900 mb-2">Rehabilitation Exercises</h3>
+        <ul className="list-disc pl-5 text-gray-800">
+          {visit.rehabilitationExercises.map((item, idx) => (
+            <li key={idx}>{item}</li>
+          ))}
+        </ul>
+      </div>
+    )}
+
+    {/* Duration & Re-evaluation */}
+    {visit.durationFrequency && (
+      <div>
+        <h3 className="text-lg font-medium text-gray-900 mb-2">Duration & Re-evaluation</h3>
+        <p className="text-gray-800">
+          {visit.durationFrequency.timesPerWeek} times/week, Re-evaluation in {visit.durationFrequency.reEvalInWeeks} week(s)
+        </p>
+      </div>
+    )}
+
+    {/* Referrals */}
+    {visit.referrals?.length > 0 && (
+      <div>
+        <h3 className="text-lg font-medium text-gray-900 mb-2">Referrals</h3>
+        <ul className="list-disc pl-5 text-gray-800">
+          {visit.referrals.map((ref, idx) => (
+            <li key={idx}>{ref}</li>
+          ))}
+        </ul>
+      </div>
+    )}
+
+    {/* Imaging */}
+    {visit.imaging && (
+      <div>
+        <h3 className="text-lg font-medium text-gray-900 mb-2">Imaging</h3>
+        {['xray', 'mri', 'ct'].map((modality) => (
+          visit.imaging[modality]?.length > 0 && (
+            <div key={modality}>
+              <p className="font-semibold capitalize">{modality}</p>
+              <ul className="list-disc pl-5 text-gray-800">
+                {visit.imaging[modality].map((part, idx) => (
+                  <li key={idx}>{part}</li>
+                ))}
+              </ul>
             </div>
+          )
+        ))}
+      </div>
+    )}
 
-            {/* History of Present Illness */}
-            {visit.historyOfPresentIllness && (
-              <div>
-                <h3 className="text-lg font-medium text-gray-900 mb-2">History of Present Illness</h3>
-                <p className="text-gray-800 whitespace-pre-line">{visit.historyOfPresentIllness}</p>
-              </div>
-            )}
+    {/* Diagnostic Ultrasound */}
+    {visit.diagnosticUltrasound && (
+      <div>
+        <h3 className="text-lg font-medium text-gray-900 mb-2">Diagnostic Ultrasound</h3>
+        <p className="text-gray-800">{visit.diagnosticUltrasound}</p>
+      </div>
+    )}
 
-            {/* Vital Signs */}
-            {visit.vitalSigns && (
-              <div>
-                <h3 className="text-lg font-medium text-gray-900 mb-2">Vital Signs</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                  {visit.vitalSigns.temperature && (
-                    <div>
-                      <p className="text-sm text-gray-500">Temperature</p>
-                      <p className="font-medium">{visit.vitalSigns.temperature} °F</p>
-                    </div>
-                  )}
-                  {visit.vitalSigns.heartRate && (
-                    <div>
-                      <p className="text-sm text-gray-500">Heart Rate</p>
-                      <p className="font-medium">{visit.vitalSigns.heartRate} bpm</p>
-                    </div>
-                  )}
-                  {visit.vitalSigns.respiratoryRate && (
-                    <div>
-                      <p className="text-sm text-gray-500">Respiratory Rate</p>
-                      <p className="font-medium">{visit.vitalSigns.respiratoryRate} breaths/min</p>
-                    </div>
-                  )}
-                  {visit.vitalSigns.bloodPressure && (
-                    <div>
-                      <p className="text-sm text-gray-500">Blood Pressure</p>
-                      <p className="font-medium">{visit.vitalSigns.bloodPressure} mmHg</p>
-                    </div>
-                  )}
-                  {visit.vitalSigns.oxygenSaturation && (
-                    <div>
-                      <p className="text-sm text-gray-500">Oxygen Saturation</p>
-                      <p className="font-medium">{visit.vitalSigns.oxygenSaturation}%</p>
-                    </div>
-                  )}
-                  {visit.vitalSigns.height && (
-                    <div>
-                      <p className="text-sm text-gray-500">Height</p>
-                      <p className="font-medium">{visit.vitalSigns.height} cm</p>
-                    </div>
-                  )}
-                  {visit.vitalSigns.weight && (
-                    <div>
-                      <p className="text-sm text-gray-500">Weight</p>
-                      <p className="font-medium">{visit.vitalSigns.weight} kg</p>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
+    {/* Nerve Study */}
+    {visit.nerveStudy?.length > 0 && (
+      <div>
+        <h3 className="text-lg font-medium text-gray-900 mb-2">Nerve Study</h3>
+        <ul className="list-disc pl-5 text-gray-800">
+          {visit.nerveStudy.map((item, idx) => (
+            <li key={idx}>{item}</li>
+          ))}
+        </ul>
+      </div>
+    )}
 
-            {/* Physical Examination */}
-            {visit.physicalExamination && (
-              <div>
-                <h3 className="text-lg font-medium text-gray-900 mb-2">Physical Examination</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {visit.physicalExamination.general && (
-                    <div>
-                      <p className="text-sm font-medium text-gray-700">General</p>
-                      <p className="text-gray-800">{visit.physicalExamination.general}</p>
-                    </div>
-                  )}
-                  {visit.physicalExamination.heent && (
-                    <div>
-                      <p className="text-sm font-medium text-gray-700">HEENT</p>
-                      <p className="text-gray-800">{visit.physicalExamination.heent}</p>
-                    </div>
-                  )}
-                  {visit.physicalExamination.cardiovascular && (
-                    <div>
-                      <p className="text-sm font-medium text-gray-700">Cardiovascular</p>
-                      <p className="text-gray-800">{visit.physicalExamination.cardiovascular}</p>
-                    </div>
-                  )}
-                  {visit.physicalExamination.respiratory && (
-                    <div>
-                      <p className="text-sm font-medium text-gray-700">Respiratory</p>
-                      <p className="text-gray-800">{visit.physicalExamination.respiratory}</p>
-                    </div>
-                  )}
-                  {visit.physicalExamination.gastrointestinal && (
-                    <div>
-                      <p className="text-sm font-medium text-gray-700">Gastrointestinal</p>
-                      <p className="text-gray-800">{visit.physicalExamination.gastrointestinal}</p>
-                    </div>
-                  )}
-                  {visit.physicalExamination.musculoskeletal && (
-                    <div>
-                      <p className="text-sm font-medium text-gray-700">Musculoskeletal</p>
-                      <p className="text-gray-800">{visit.physicalExamination.musculoskeletal}</p>
-                    </div>
-                  )}
-                  {visit.physicalExamination.neurological && (
-                    <div>
-                      <p className="text-sm font-medium text-gray-700">Neurological</p>
-                      <p className="text-gray-800">{visit.physicalExamination.neurological}</p>
-                    </div>
-                  )}
-                  {visit.physicalExamination.skin && (
-                    <div>
-                      <p className="text-sm font-medium text-gray-700">Skin</p>
-                      <p className="text-gray-800">{visit.physicalExamination.skin}</p>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
+    {/* Restrictions */}
+    {visit.restrictions && (
+      <div>
+        <h3 className="text-lg font-medium text-gray-900 mb-2">Restrictions</h3>
+        <ul className="list-disc pl-5 text-gray-800">
+          <li>Avoid Activity: {visit.restrictions.avoidActivityWeeks} week(s)</li>
+          <li>Lifting Limit: {visit.restrictions.liftingLimitLbs} lbs</li>
+          {visit.restrictions.avoidProlongedSitting && <li>Avoid prolonged sitting/standing</li>}
+        </ul>
+      </div>
+    )}
 
-            {/* Assessment */}
-            {visit.assessment && (
-              <div>
-                <h3 className="text-lg font-medium text-gray-900 mb-2">Assessment</h3>
-                <p className="text-gray-800 whitespace-pre-line">{visit.assessment}</p>
-              </div>
-            )}
+    {/* Disability Duration */}
+    {visit.disabilityDuration && (
+      <div>
+        <h3 className="text-lg font-medium text-gray-900 mb-2">Disability Duration</h3>
+        <p className="text-gray-800">{visit.disabilityDuration}</p>
+      </div>
+    )}
 
-            {/* Plan */}
-            {visit.plan && (
-              <div>
-                <h3 className="text-lg font-medium text-gray-900 mb-2">Plan</h3>
-                
-                {/* Diagnosis */}
-                {visit.plan.diagnosis && visit.plan.diagnosis.length > 0 && (
-                  <div className="mb-4">
-                    <h4 className="text-md font-medium text-gray-800 mb-1">Diagnosis</h4>
-                    <ul className="list-disc pl-5 text-gray-800">
-                      {visit.plan.diagnosis.map((diagnosis, index) => (
-                        diagnosis && <li key={index}>{diagnosis}</li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-                
-                {/* Medications */}
-                {visit.plan.medications && visit.plan.medications.length > 0 && (
-                  <div className="mb-4">
-                    <h4 className="text-md font-medium text-gray-800 mb-1">Medications</h4>
-                    <div className="overflow-x-auto">
-                      <table className="min-w-full divide-y divide-gray-200">
-                        <thead className="bg-gray-50">
-                          <tr>
-                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              Medication
-                            </th>
-                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              Dosage
-                            </th>
-                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              Frequency
-                            </th>
-                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              Duration
-                            </th>
-                          </tr>
-                        </thead>
-                        <tbody className="bg-white divide-y divide-gray-200">
-                          {visit.plan.medications.map((medication, index) => (
-                            medication.name && (
-                              <tr key={index}>
-                                <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-800">
-                                  {medication.name}
-                                </td>
-                                <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-800">
-                                  {medication.dosage}
-                                </td>
-                                <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-800">
-                                  {medication.frequency}
-                                </td>
-                                <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-800">
-                                  {medication.duration}
-                                </td>
-                              </tr>
-                            )
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                )}
-                
-                {/* Lab Tests */}
-                {visit.plan.labTests && visit.plan.labTests.length > 0 && (
-                  <div className="mb-4">
-                    <h4 className="text-md font-medium text-gray-800 mb-1">Lab Tests</h4>
-                    <ul className="list-disc pl-5 text-gray-800">
-                      {visit.plan.labTests.map((test, index) => (
-                        test && <li key={index}>{test}</li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-                
-                {/* Imaging */}
-                {visit.plan.imaging && visit.plan.imaging.length > 0 && (
-                  <div className="mb-4">
-                    <h4 className="text-md font-medium text-gray-800 mb-1">Imaging</h4>
-                    <ul className="list-disc pl-5 text-gray-800">
-                      {visit.plan.imaging.map((image, index) => (
-                        image && <li key={index}>{image}</li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-                
-                {/* Follow-up Plan */}
-                {visit.plan.followUpPlan && (
-                  <div>
-                    <h4 className="text-md font-medium text-gray-800 mb-1">Follow-up Plan</h4>
-                    <p className="text-gray-800">{visit.plan.followUpPlan}</p>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        )}
+    {/* Other Notes */}
+    {visit.otherNotes && (
+      <div>
+        <h3 className="text-lg font-medium text-gray-900 mb-2">Other Notes</h3>
+        <p className="text-gray-800 whitespace-pre-line">{visit.otherNotes}</p>
+      </div>
+    )}
+
+  </div>
+)}
+
 
         {/* Follow-up Visit Content */}
-        {visit.__t === 'FollowupVisit' && (
+        {visit.visitType === 'Followup' && (
           <div className="space-y-6">
             {/* Progress Notes */}
             <div>

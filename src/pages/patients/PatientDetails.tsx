@@ -70,19 +70,13 @@ interface Patient {
 interface Visit {
   _id: string;
   patient: string;
-  doctor: {
-    _id: string;
-    firstName: string;
-    lastName: string;
-  };
+  doctor: { _id: string; firstName: string; lastName: string };
   date: string;
   visitType: string;
   notes: string;
   createdAt: string;
   __t: string;
 
-  // ✅ Add these if they exist in your visit schema
-  plan?: string;
   rationale?: string;
   scheduleOfCare?: string;
   physicalModality?: string;
@@ -90,7 +84,14 @@ interface Visit {
   returnFrequency?: string;
   referral?: string;
   restrictions?: string;
+  plan?: {
+    diagnosis?: string[];
+    labTests?: string[];
+    imaging?: string[];
+    medications?: { name: string; dosage: string; frequency: string }[];
+  };
 }
+
 
 
 interface Appointment {
@@ -150,7 +151,12 @@ const PatientDetails: React.FC = () => {
         
         // Fetch patient visits
         const visitsResponse = await axios.get(`http://localhost:5000/api/patients/${id}/visits`);
-        setVisits(visitsResponse.data);
+        
+        const parsedVisits = visitsResponse.data.map((visit: any) => ({
+          ...visit,
+          plan: typeof visit.plan === 'string' ? JSON.parse(visit.plan) : visit.plan,
+        }));
+        setVisits(parsedVisits);
         
         // Fetch patient appointments
         const appointmentsResponse = await axios.get(`http://localhost:5000/api/appointments?patient=${id}`);
@@ -758,12 +764,12 @@ const PatientDetails: React.FC = () => {
                           {visit.notes || 'No notes provided'}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                        <button
-  onClick={() => setSelectedVisit(visit)}
+                        <Link 
+  to={`/visits/${visit._id}`} 
   className="text-blue-600 hover:text-blue-900 underline"
 >
   View Details
-</button>
+</Link>
 
                         </td>
                       </tr>
@@ -782,25 +788,34 @@ const PatientDetails: React.FC = () => {
     <h2 className="text-lg font-semibold mb-2">Assessment and Plan</h2>
     <h3 className="text-base font-bold mb-2 underline">Treatment Plans/Rationale</h3>
     <ul className="list-disc pl-5 space-y-2 text-sm text-gray-800">
-      <li>See diagnosis for assessment.</li>
-      <li>The patient’s overall condition: remains status post injury.</li>
-      <li>{selectedVisit.rationale || 'Rationale for exam not documented.'}</li>
-      {/* <li>{selectedVisit.plan || 'Treatment objectives not documented.'}</li> */}
-      {selectedVisit.plan?.diagnosis && (
+    {selectedVisit.plan?.diagnosis && (
   <li>
     <strong>Diagnosis:</strong> {selectedVisit.plan.diagnosis.join(', ')}
   </li>
 )}
-{selectedVisit.plan?.labTests && (
+
+
+{selectedVisit.plan?.medications && (
   <li>
-    <strong>Lab Tests:</strong> {selectedVisit.plan.labTests.join(', ')}
+    <strong>Medications:</strong>
+    <ul className="list-disc pl-5">
+      {selectedVisit.plan.medications.map((med, index) => (
+        <li key={index}>
+          {med.name} - {med.dosage}, {med.frequency}
+        </li>
+      ))}
+    </ul>
   </li>
 )}
-{selectedVisit.plan?.imaging && (
-  <li>
-    <strong>Imaging:</strong> {selectedVisit.plan.imaging.join(', ')}
-  </li>
-)}
+<li>{selectedVisit.scheduleOfCare || 'Schedule of care not provided.'}</li>
+<li>{selectedVisit.physicalModality || 'Physical modality not specified.'}</li>
+<li>{selectedVisit.reevaluation || 'Re-evaluation plan not specified.'}</li>
+<li>{selectedVisit.returnFrequency || 'Visit frequency not mentioned.'}</li>
+<li>{selectedVisit.referral || 'Referral notes not added.'}</li>
+<li>{selectedVisit.restrictions || 'No activity restrictions recorded.'}</li>
+
+
+
 {selectedVisit.plan?.medications && (
   <li>
     <strong>Medications:</strong>{' '}

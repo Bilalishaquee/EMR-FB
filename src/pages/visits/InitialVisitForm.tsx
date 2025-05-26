@@ -111,16 +111,33 @@ const InitialVisitForm: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSaving(true);
-
+  
     try {
-      await axios.post(`http://localhost:5000/api/patients/${id}/visits/initial`, {
-        ...formData,
-        patient: id,                 // ✅ required
-        doctor: user?._id,           // ✅ required
-        visitType: 'initial'         // ✅ required
-      });
-      
-
+      const payload = {
+        patient: id,
+        doctor: user?._id,
+        visitType: 'initial',
+        chiefComplaint: formData.chiefComplaint,
+        chiropracticAdjustment: formData.chiropracticAdjustment,
+        acupuncture: formData.acupuncture,
+        physiotherapy: formData.physiotherapy,
+        rehabilitationExercises: formData.rehabilitationExercises,
+        durationFrequency: formData.durationFrequency, // { timesPerWeek, reEvalInWeeks }
+        referrals: formData.referrals,
+        imaging: {
+          xray: formData.imaging?.xray,
+          mri: formData.imaging?.mri,
+          ct: formData.imaging?.ct
+        },
+        diagnosticUltrasound: formData.diagnosticUltrasound,
+        nerveStudy: formData.nerveStudy,
+        restrictions: formData.restrictions, // { avoidActivityWeeks, liftingLimitLbs, avoidProlongedSitting }
+        disabilityDuration: formData.disabilityDuration,
+        otherNotes: formData.otherNotes
+      };
+  
+      await axios.post(`http://localhost:5000/api/patients/${id}/visits/initial`, payload);
+  
       localStorage.removeItem(`initialVisit_${id}`);
       navigate(`/patients/${id}`);
     } catch (error) {
@@ -129,7 +146,7 @@ const InitialVisitForm: React.FC = () => {
       setIsSaving(false);
     }
   };
-
+  
   return (
     <div className="container mx-auto p-6">
       <div className="flex items-center mb-4">
