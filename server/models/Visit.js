@@ -181,43 +181,43 @@ const baseVisitSchema = new mongoose.Schema(
 
 const Visit = mongoose.model('Visit', baseVisitSchema);
 
-// Initial Visit Schema
 const initialVisitSchema = new mongoose.Schema({
-  chiefComplaint: { type: String, required: true },
-  historyOfPresentIllness: String,
-  vitalSigns: {
-    temperature: Number,
-    heartRate: Number,
-    respiratoryRate: Number,
-    bloodPressure: String,
-    oxygenSaturation: Number,
-    height: Number,
-    weight: Number
+  chiefComplaint: { type: String, required: true }, // ✅ REQUIRED
+  chiropracticAdjustment: [String],
+  acupuncture: [String],
+  physiotherapy: [String],
+  rehabilitationExercises: [String],
+  
+  durationFrequency: {
+    timesPerWeek: { type: Number },
+    reEvalInWeeks: { type: Number }
   },
-  physicalExamination: {
-    general: String,
-    heent: String,
-    cardiovascular: String,
-    respiratory: String,
-    gastrointestinal: String,
-    musculoskeletal: String,
-    neurological: String,
-    skin: String
+
+  referrals: [String],
+
+  imaging: {
+    xray: [String],
+    mri: [String],
+    ct: [String]
   },
-  assessment: String,
-  plan: {
-    diagnosis: [String],
-    medications: [{
-      name: String,
-      dosage: String,
-      frequency: String,
-      duration: String
-    }],
-    labTests: [String],
-    imaging: [String],
-    followUpPlan: String
-  }
-});
+
+  diagnosticUltrasound: String,
+  nerveStudy: [String],
+
+  restrictions: {
+    avoidActivityWeeks: { type: Number },
+    liftingLimitLbs: { type: Number },
+    avoidProlongedSitting: { type: Boolean }
+  },
+
+  disabilityDuration: String,
+  otherNotes: String,
+
+  patient: { type: mongoose.Schema.Types.ObjectId, ref: 'Patient', required: true },
+  doctor: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  visitType: { type: String, enum: ['initial'], default: 'initial' }
+}, { timestamps: true });
+
 
 // Follow-up Visit Schema
 const followupVisitSchema = new mongoose.Schema({

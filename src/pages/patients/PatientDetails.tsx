@@ -80,7 +80,18 @@ interface Visit {
   notes: string;
   createdAt: string;
   __t: string;
+
+  // ✅ Add these if they exist in your visit schema
+  plan?: string;
+  rationale?: string;
+  scheduleOfCare?: string;
+  physicalModality?: string;
+  reevaluation?: string;
+  returnFrequency?: string;
+  referral?: string;
+  restrictions?: string;
 }
+
 
 interface Appointment {
   _id: string;
@@ -117,6 +128,7 @@ const PatientDetails: React.FC = () => {
   
   const [patient, setPatient] = useState<Patient | null>(null);
   const [visits, setVisits] = useState<Visit[]>([]);
+  const [selectedVisit, setSelectedVisit] = useState<Visit | null>(null);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -746,9 +758,13 @@ const PatientDetails: React.FC = () => {
                           {visit.notes || 'No notes provided'}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                          <Link to={`/visits/${visit._id}`} className="text-blue-600 hover:text-blue-900">
-                            View Details
-                          </Link>
+                        <button
+  onClick={() => setSelectedVisit(visit)}
+  className="text-blue-600 hover:text-blue-900 underline"
+>
+  View Details
+</button>
+
                         </td>
                       </tr>
                     ))
@@ -761,6 +777,61 @@ const PatientDetails: React.FC = () => {
                   )}
                 </tbody>
               </table>
+              {selectedVisit && (
+  <div className="p-6 mt-6 bg-gray-50 border border-gray-200 rounded-lg shadow">
+    <h2 className="text-lg font-semibold mb-2">Assessment and Plan</h2>
+    <h3 className="text-base font-bold mb-2 underline">Treatment Plans/Rationale</h3>
+    <ul className="list-disc pl-5 space-y-2 text-sm text-gray-800">
+      <li>See diagnosis for assessment.</li>
+      <li>The patient’s overall condition: remains status post injury.</li>
+      <li>{selectedVisit.rationale || 'Rationale for exam not documented.'}</li>
+      {/* <li>{selectedVisit.plan || 'Treatment objectives not documented.'}</li> */}
+      {selectedVisit.plan?.diagnosis && (
+  <li>
+    <strong>Diagnosis:</strong> {selectedVisit.plan.diagnosis.join(', ')}
+  </li>
+)}
+{selectedVisit.plan?.labTests && (
+  <li>
+    <strong>Lab Tests:</strong> {selectedVisit.plan.labTests.join(', ')}
+  </li>
+)}
+{selectedVisit.plan?.imaging && (
+  <li>
+    <strong>Imaging:</strong> {selectedVisit.plan.imaging.join(', ')}
+  </li>
+)}
+{selectedVisit.plan?.medications && (
+  <li>
+    <strong>Medications:</strong>{' '}
+    <ul className="list-disc pl-5">
+      {selectedVisit.plan.medications.map((med, index) => (
+        <li key={index}>
+          {med.name} - {med.dosage}, {med.frequency}
+        </li>
+      ))}
+    </ul>
+  </li>
+)}
+
+      <li>{selectedVisit.scheduleOfCare || 'Schedule of care not provided.'}</li>
+      <li>{selectedVisit.physicalModality || 'Physical modality not specified.'}</li>
+      <li>{selectedVisit.reevaluation || 'Re-evaluation plan not specified.'}</li>
+      <li>{selectedVisit.returnFrequency || 'Visit frequency not mentioned.'}</li>
+      <li>{selectedVisit.referral || 'Referral notes not added.'}</li>
+      <li>{selectedVisit.restrictions || 'No activity restrictions recorded.'}</li>
+    </ul>
+    <div className="mt-4">
+      <button
+        onClick={() => setSelectedVisit(null)}
+        className="text-sm text-blue-500 underline"
+      >
+        Close Details
+      </button>
+    </div>
+  </div>
+)}
+
             </div>
           </div>
         )}
