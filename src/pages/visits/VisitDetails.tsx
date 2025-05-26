@@ -435,7 +435,7 @@ const VisitDetails: React.FC = () => {
 
        
         {/* Follow-up Visit Details */}
-        {visit.__t === 'FollowupVisit' && (
+        {visit.visitType === 'followup' && (
           <div>
             {/* Areas */}
             {(visit.areasImproving !== undefined || visit.areasExacerbated !== undefined || visit.areasSame !== undefined) && (
@@ -576,7 +576,7 @@ const VisitDetails: React.FC = () => {
 
 
         {/* Discharge Visit Content */}
-        {visit.__t === 'DischargeVisit' && (
+        {visit.visitType === 'discharge' && (
           <div className="space-y-6">
             {/* Treatment Summary */}
             <div>

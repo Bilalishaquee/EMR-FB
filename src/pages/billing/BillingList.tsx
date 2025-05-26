@@ -14,21 +14,33 @@ import {
   AlertTriangle
 } from 'lucide-react';
 
+interface Patient {
+  _id: string;
+  firstName: string;
+  lastName: string;
+}
+
 interface Invoice {
   _id: string;
   invoiceNumber: string;
-  patient: {
-    _id: string;
-    firstName: string;
-    lastName: string;
-  };
+  patient: Patient | string; // Can be either patient object or just the ID
   dateIssued: string;
   dueDate: string;
   total: number;
   status: string;
 }
 
-const BillingList: React.FC = () => {
+interface BillingListProps {
+  patientId?: string; // Optional patient ID to filter by
+  showPatientColumn?: boolean; // Whether to show the patient column (useful when showing all patients)
+  showHeader?: boolean; // Whether to show the page header and stats
+}
+
+const BillingList: React.FC<BillingListProps> = ({ 
+  patientId = '', 
+  showPatientColumn = true,
+  showHeader = true 
+}) => {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -54,6 +66,11 @@ const BillingList: React.FC = () => {
     setIsLoading(true);
     try {
       let url = `http://localhost:5000/api/billing?page=${currentPage}`;
+      
+      // Always filter by patientId if provided
+      if (patientId) {
+        url += `&patientId=${patientId}`;
+      }
       
       if (searchTerm) {
         url += `&search=${searchTerm}`;
@@ -126,85 +143,122 @@ const BillingList: React.FC = () => {
     }
   };
 
+  // Helper function to get patient name from invoice
+  const getPatientName = (invoice: Invoice): string => {
+    if (!invoice.patient) return 'Unknown Patient';
+    
+    if (typeof invoice.patient === 'string') {
+      // If patient is just an ID, we can't show the name
+      return 'Patient';
+    }
+    
+    return `${invoice.patient.firstName} ${invoice.patient.lastName}`;
+  };
+
+  // Helper function to check if invoice belongs to current patient
+  const isInvoiceForCurrentPatient = (invoice: Invoice): boolean => {
+    if (!patientId) return true;
+    
+    if (typeof invoice.patient === 'string') {
+      return invoice.patient === patientId;
+    }
+    
+    return invoice.patient._id === patientId;
+  };
+
   return (
     <div className="container mx-auto px-4">
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
-        <h1 className="text-2xl font-semibold text-gray-800 mb-4 md:mb-0">Billing & Invoices</h1>
-        <Link
-          to="/billing/new"
-          className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-        >
-          <Plus className="mr-2 h-4 w-4" />
-          Create Invoice
-        </Link>
-      </div>
-
-      {/* Billing Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        <div className="bg-white p-4 rounded-lg shadow border-l-4 border-blue-500">
-          <div className="flex items-center">
-            <div className="p-3 rounded-full bg-blue-100 mr-4">
-              <FileText className="h-6 w-6 text-blue-600" />
+      {showHeader && (
+        <>
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
+            <h1 className="text-2xl font-semibold text-gray-800 mb-4 md:mb-0">
+              {patientId ? 'Patient Billing' : 'Billing & Invoices'}
+            </h1>
+            <Link
+              to={patientId ? `/billing/new?patientId=${patientId}` : "/billing/new"}
+              className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+            >
+              <Plus className="mr-2 h-4 w-4" />
+              Create Invoice
+            </Link>
+          </div>
+          
+          {/* Billing Stats */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <div className="bg-white p-4 rounded-lg shadow border-l-4 border-blue-500">
+              <div className="flex items-center">
+                <div className="p-3 rounded-full bg-blue-100 mr-4">
+                  <FileText className="h-6 w-6 text-blue-600" />
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500 font-medium">Billed This Month</p>
+                  <p className="text-2xl font-semibold text-gray-800">${billingStats.billedThisMonth.toFixed(2)}</p>
+                </div>
+              </div>
             </div>
-            <div>
-              <p className="text-sm text-gray-500 font-medium">Billed This Month</p>
-              <p className="text-2xl font-semibold text-gray-800">${billingStats.billedThisMonth.toFixed(2)}</p>
+            <div className="bg-white p-4 rounded-lg shadow border-l-4 border-green-500">
+              <div className="flex items-center">
+                <div className="p-3 rounded-full bg-green-100 mr-4">
+                  <DollarSign className="h-6 w-6 text-green-600" />
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500 font-medium">Collected This Month</p>
+                  <p className="text-2xl font-semibold text-gray-800">${billingStats.collectedThisMonth.toFixed(2)}</p>
+                </div>
+              </div>
+            </div>
+            <div className="bg-white p-4 rounded-lg shadow border-l-4 border-yellow-500">
+              <div className="flex items-center">
+                <div className="p-3 rounded-full bg-yellow-100 mr-4">
+                  <AlertTriangle className="h-6 w-6 text-yellow-600" />
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500 font-medium">Outstanding Balance</p>
+                  <p className="text-2xl font-semibold text-gray-800">${billingStats.outstanding.toFixed(2)}</p>
+                </div>
+              </div>
             </div>
           </div>
-        </div>
-        <div className="bg-white p-4 rounded-lg shadow border-l-4 border-green-500">
-          <div className="flex items-center">
-            <div className="p-3 rounded-full bg-green-100 mr-4">
-              <DollarSign className="h-6 w-6 text-green-600" />
-            </div>
-            <div>
-              <p className="text-sm text-gray-500 font-medium">Collected This Month</p>
-              <p className="text-2xl font-semibold text-gray-800">${billingStats.collectedThisMonth.toFixed(2)}</p>
-            </div>
-          </div>
-        </div>
-        <div className="bg-white p-4 rounded-lg shadow border-l-4 border-yellow-500">
-          <div className="flex items-center">
-            <div className="p-3 rounded-full bg-yellow-100 mr-4">
-              <AlertTriangle className="h-6 w-6 text-yellow-600" />
-            </div>
-            <div>
-              <p className="text-sm text-gray-500 font-medium">Outstanding Balance</p>
-              <p className="text-2xl font-semibold text-gray-800">${billingStats.outstanding.toFixed(2)}</p>
-            </div>
-          </div>
-        </div>
-      </div>
+        </>
+      )}
 
       {/* Filters */}
       <div className="bg-white shadow rounded-lg p-4 mb-6">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div>
+        <div className="flex flex-wrap items-end gap-4">
+          {/* Search Invoices */}
+          <div className="flex-1 min-w-[250px]">
+            <label htmlFor="searchInvoices" className="block text-sm font-medium text-gray-700 mb-1">
+              Search Invoices
+            </label>
             <form onSubmit={handleSearch} className="flex">
               <div className="relative flex-grow">
                 <input
+                  id="searchInvoices"
                   type="text"
                   placeholder="Search invoices..."
-                  className="w-full px-4 py-2 border border-gray-300 rounded-l-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-l-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
                 <button
                   type="submit"
                   className="absolute right-0 top-0 h-full px-3 text-gray-500 hover:text-gray-700"
+                  aria-label="Search"
                 >
-                  <Search className="w-5 h-5" />
+                  <Search className="w-4 h-4" />
                 </button>
               </div>
               <button
                 type="submit"
-                className="px-4 py-2 bg-blue-600 text-white rounded-r-md hover:bg-blue-700 transition-colors"
+                className="px-3 py-2 bg-blue-600 text-white rounded-r-md hover:bg-blue-700 transition-colors text-sm whitespace-nowrap"
               >
                 Search
               </button>
             </form>
           </div>
-          <div>
+          
+          {/* Status */}
+          <div className="flex-1 min-w-[150px]">
             <label htmlFor="statusFilter" className="block text-sm font-medium text-gray-700 mb-1">
               Status
             </label>
@@ -212,7 +266,7 @@ const BillingList: React.FC = () => {
               id="statusFilter"
               value={statusFilter}
               onChange={handleStatusFilterChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm"
             >
               <option value="">All Statuses</option>
               <option value="draft">Draft</option>
@@ -221,7 +275,9 @@ const BillingList: React.FC = () => {
               <option value="overdue">Overdue</option>
             </select>
           </div>
-          <div>
+          
+          {/* From Date */}
+          <div className="flex-1 min-w-[150px]">
             <label htmlFor="startDate" className="block text-sm font-medium text-gray-700 mb-1">
               From Date
             </label>
@@ -231,10 +287,12 @@ const BillingList: React.FC = () => {
               name="startDate"
               value={dateRange.startDate}
               onChange={handleDateRangeChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm"
             />
           </div>
-          <div>
+          
+          {/* To Date */}
+          <div className="flex-1 min-w-[150px]">
             <label htmlFor="endDate" className="block text-sm font-medium text-gray-700 mb-1">
               To Date
             </label>
@@ -244,7 +302,7 @@ const BillingList: React.FC = () => {
               name="endDate"
               value={dateRange.endDate}
               onChange={handleDateRangeChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm"
             />
           </div>
         </div>
@@ -264,9 +322,11 @@ const BillingList: React.FC = () => {
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Invoice #
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Patient
-                    </th>
+                    {showPatientColumn && (
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Patient
+                      </th>
+                    )}
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Date Issued
                     </th>
@@ -286,34 +346,40 @@ const BillingList: React.FC = () => {
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {invoices.length > 0 ? (
-                    invoices.map((invoice) => (
-                      <tr key={invoice._id} className="hover:bg-gray-50">
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                          {invoice.invoiceNumber}
-                        </td>
-                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-  {invoice.patient
-  ? `${invoice.patient.firstName} ${invoice.patient.lastName}`
-  : 'Unknown Patient'}
+                    invoices
+                      .filter(isInvoiceForCurrentPatient)
+                      .map((invoice) => (
+                        <tr key={invoice._id} className="hover:bg-gray-50">
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                            {invoice.invoiceNumber}
+                          </td>
+                          {showPatientColumn && (
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                              {getPatientName(invoice)}
+                            </td>
+                          )}
 
-</td>
-
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {new Date(invoice.dateIssued).toLocaleDateString()}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {new Date(invoice.dueDate).toLocaleDateString()}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                          ${invoice.total.toFixed(2)}
-                        </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {new Date(invoice.dateIssued).toLocaleDateString()}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {new Date(invoice.dueDate).toLocaleDateString()}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                            ${invoice.total.toFixed(2)}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <span
+                              className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(invoice.status)}`}
+                            >
+                              {invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1)}
+                            </span>
+                          </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span
-                            className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(
-                              invoice.status
-                            )}`}
+                            className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(invoice.status)}`}
                           >
-                            {invoice.status}
+                            {invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1)}
                           </span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
@@ -335,9 +401,11 @@ const BillingList: React.FC = () => {
                               </Link>
                             )}
                             <Link
-                              to={`/billing/${invoice._id}`}
+                              to={`/billing/${invoice._id}/download`}
                               className="text-green-600 hover:text-green-900"
                               title="Download Invoice"
+                              target="_blank"
+                              rel="noopener noreferrer"
                             >
                               <Download className="w-5 h-5" />
                             </Link>
