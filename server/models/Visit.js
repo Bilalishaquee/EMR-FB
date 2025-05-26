@@ -76,29 +76,44 @@ const followupVisitSchema = new mongoose.Schema({
     ref: 'Visit',
     required: true
   },
-  progressNotes: String,
-  vitalSigns: {
-    temperature: Number,
-    heartRate: Number,
-    respiratoryRate: Number,
-    bloodPressure: String,
-    oxygenSaturation: Number,
-    weight: Number
+  // Fields based on EXAM FORM---REEVALUATION template
+  areas: { type: String },
+  areasImproving: { type: Boolean },
+  areasExacerbated: { type: Boolean },
+  areasSame: { type: Boolean },
+  musclePalpation: { type: String },
+  painRadiating: { type: String },
+  romWnlNoPain: { type: Boolean },
+  romWnlWithPain: { type: Boolean },
+  romImproved: { type: Boolean },
+  romDecreased: { type: Boolean },
+  romSame: { type: Boolean },
+  orthos: {
+    tests: { type: String },
+    result: { type: String }
   },
-  currentSymptoms: [String],
-  assessmentUpdate: String,
-  planUpdate: {
-    medications: [{
-      name: String,
-      dosage: String,
-      frequency: String,
-      duration: String,
-      changes: String
-    }],
-    newTests: [String],
-    nextFollowUp: Date
-  }
+  activitiesCausePain: { type: String },
+  activitiesCausePainOther: { type: String },
+  treatmentPlan: {
+    treatments: { type: String },
+    timesPerWeek: { type: String }
+  },
+  overallResponse: {
+    improving: { type: Boolean },
+    worse: { type: Boolean },
+    same: { type: Boolean }
+  },
+  referrals: { type: String },
+  diagnosticStudy: {
+    study: { type: String },
+    bodyPart: { type: String },
+    result: { type: String }
+  },
+  homeCare: { type: String },
+  // Notes field is in the base schema
 });
+
+
 
 // Discharge Visit Schema
 const dischargeVisitSchema = new mongoose.Schema({

@@ -31,27 +31,44 @@ const FollowupVisitForm: React.FC = () => {
   const [autoSaveStatus, setAutoSaveStatus] = useState('');
   const [formData, setFormData] = useState({
     previousVisit: '',
-    progressNotes: '',
-    vitalSigns: {
-      temperature: '',
-      heartRate: '',
-      respiratoryRate: '',
-      bloodPressure: '',
-      oxygenSaturation: '',
-      weight: ''
+    areas: '',
+    areasImproving: false,
+    areasExacerbated: false,
+    areasSame: false,
+    musclePalpation: '',
+    painRadiating: '',
+    romWnlNoPain: false,
+    romWnlWithPain: false,
+    romImproved: false,
+    romDecreased: false,
+    romSame: false,
+    orthos: {
+      tests: '',
+      result: ''
     },
-    currentSymptoms: [''],
-    assessmentUpdate: '',
-    planUpdate: {
-      medications: [{ name: '', dosage: '', frequency: '', duration: '', changes: '' }],
-      newTests: [''],
-      nextFollowUp: ''
+    activitiesCausePain: '',
+    activitiesCausePainOther: '',
+    treatmentPlan: {
+      treatments: '',
+      timesPerWeek: ''
     },
+    overallResponse: {
+      improving: false,
+      worse: false,
+      same: false
+    },
+    referrals: '',
+    diagnosticStudy: {
+      study: '',
+      bodyPart: '',
+      result: ''
+    },
+    homeCare: '',
     notes: ''
   });
   
   // Auto-save timer
-  const [autoSaveTimer, setAutoSaveTimer] = useState<NodeJS.Timeout | null>(null);
+  const [autoSaveTimer, setAutoSaveTimer] = useState<number | null>(null);
   const [localFormData, setLocalFormData] = useState<string | null>(null);
 
   useEffect(() => {
@@ -89,110 +106,29 @@ const FollowupVisitForm: React.FC = () => {
   }, [id]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
-    
-    // Handle nested objects
-    if (name.includes('.')) {
-      const [parent, child] = name.split('.');
-      setFormData(prev => ({
-        ...prev,
-        [parent]: {
-          ...prev[parent as keyof typeof prev],
-          [child]: value
-        }
-      }));
-    } else {
-      setFormData(prev => ({ ...prev, [name]: value }));
-    }
-    
-    // Set up auto-save
-    if (autoSaveTimer) {
-      clearTimeout(autoSaveTimer);
-    }
-    
-    const timer = setTimeout(() => {
-      localStorage.setItem(`followupVisit_${id}`, JSON.stringify(formData));
-      setAutoSaveStatus('Form auto-saved');
-      setTimeout(() => setAutoSaveStatus(''), 2000);
-    }, 2000);
-    
-    setAutoSaveTimer(timer);
-  };
+    const { name, value, type } = e.target;
 
-  const handleVitalSignsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      vitalSigns: {
-        ...prev.vitalSigns,
-        [name]: value
+    setFormData(prev => {
+      let updatedValue: any = value;
+
+      if (type === 'checkbox' && e.target instanceof HTMLInputElement) {
+        updatedValue = e.target.checked;
       }
-    }));
-    
-    // Set up auto-save
-    if (autoSaveTimer) {
-      clearTimeout(autoSaveTimer);
-    }
-    
-    const timer = setTimeout(() => {
-      localStorage.setItem(`followupVisit_${id}`, JSON.stringify(formData));
-      setAutoSaveStatus('Form auto-saved');
-      setTimeout(() => setAutoSaveStatus(''), 2000);
-    }, 2000);
-    
-    setAutoSaveTimer(timer);
-  };
 
-  const handleArrayChange = (category: string, index: number, value: string) => {
-    if (category === 'currentSymptoms') {
-      const updatedArray = [...formData.currentSymptoms];
-      updatedArray[index] = value;
-      
-      setFormData(prev => ({
-        ...prev,
-        currentSymptoms: updatedArray
-      }));
-    } else if (category === 'newTests') {
-      const updatedArray = [...formData.planUpdate.newTests];
-      updatedArray[index] = value;
-      
-      setFormData(prev => ({
-        ...prev,
-        planUpdate: {
-          ...prev.planUpdate,
-          newTests: updatedArray
-        }
-      }));
-    }
-    
-    // Set up auto-save
-    if (autoSaveTimer) {
-      clearTimeout(autoSaveTimer);
-    }
-    
-    const timer = setTimeout(() => {
-      localStorage.setItem(`followupVisit_${id}`, JSON.stringify(formData));
-      setAutoSaveStatus('Form auto-saved');
-      setTimeout(() => setAutoSaveStatus(''), 2000);
-    }, 2000);
-    
-    setAutoSaveTimer(timer);
-  };
-
-  const handleMedicationChange = (index: number, field: string, value: string) => {
-    const updatedMedications = [...formData.planUpdate.medications];
-    updatedMedications[index] = {
-      ...updatedMedications[index],
-      [field]: value
-    };
-    
-    setFormData(prev => ({
-      ...prev,
-      planUpdate: {
-        ...prev.planUpdate,
-        medications: updatedMedications
+      // Handle nested objects
+      if (name.includes('.')) {
+        const [parent, child] = name.split('.');
+        return {
+          ...prev,
+          [parent]: {
+            ...(prev[parent as keyof typeof prev] as any),
+            [child]: updatedValue
+          }
+        };
+      } else {
+        return { ...prev, [name]: updatedValue };
       }
-    }));
+    });
     
     // Set up auto-save
     if (autoSaveTimer) {
@@ -206,77 +142,6 @@ const FollowupVisitForm: React.FC = () => {
     }, 2000);
     
     setAutoSaveTimer(timer);
-  };
-
-  const addArrayItem = (category: string) => {
-    if (category === 'medications') {
-      setFormData(prev => ({
-        ...prev,
-        planUpdate: {
-          ...prev.planUpdate,
-          medications: [...prev.planUpdate.medications, { name: '', dosage: '', frequency: '', duration: '', changes: '' }]
-        }
-      }));
-    } else if (category === 'currentSymptoms') {
-      setFormData(prev => ({
-        ...prev,
-        currentSymptoms: [...prev.currentSymptoms, '']
-      }));
-    } else if (category === 'newTests') {
-      setFormData(prev => ({
-        ...prev,
-        planUpdate: {
-          ...prev.planUpdate,
-          newTests: [...prev.planUpdate.newTests, '']
-        }
-      }));
-    }
-  };
-
-  const removeArrayItem = (category: string, index: number) => {
-    if (category === 'medications') {
-      const updatedMedications = [...formData.planUpdate.medications];
-      updatedMedications.splice(index, 1);
-      
-      setFormData(prev => ({
-        ...prev,
-        planUpdate: {
-          ...prev.planUpdate,
-          medications: updatedMedications
-        }
-      }));
-    } else if (category === 'currentSymptoms') {
-      const updatedSymptoms = [...formData.currentSymptoms];
-      updatedSymptoms.splice(index, 1);
-      
-      setFormData(prev => ({
-        ...prev,
-        currentSymptoms: updatedSymptoms
-      }));
-    } else if (category === 'newTests') {
-      const updatedTests = [...formData.planUpdate.newTests];
-      updatedTests.splice(index, 1);
-      
-      setFormData(prev => ({
-        ...prev,
-        planUpdate: {
-          ...prev.planUpdate,
-          newTests: updatedTests
-        }
-      }));
-    }
-  };
-
-  const loadSavedForm = () => {
-    if (localFormData) {
-      setFormData(JSON.parse(localFormData));
-      setLocalFormData(null);
-    }
-  };
-
-  const discardSavedForm = () => {
-    localStorage.removeItem(`followupVisit_${id}`);
-    setLocalFormData(null);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -290,6 +155,9 @@ const FollowupVisitForm: React.FC = () => {
     setIsSaving(true);
     
     try {
+      // The API endpoint and data structure will likely need to be updated on the server-side
+      // to match the new form fields. This call assumes the backend is updated to receive
+      // the new formData structure.
       await axios.post(`http://localhost:5000/api/patients/${id}/visits/followup`, formData);
       
       // Clear local storage after successful submission
@@ -298,6 +166,7 @@ const FollowupVisitForm: React.FC = () => {
       navigate(`/patients/${id}`);
     } catch (error) {
       console.error('Error saving visit:', error);
+      alert('Failed to save visit. Please try again.');
     } finally {
       setIsSaving(false);
     }
@@ -373,9 +242,12 @@ const FollowupVisitForm: React.FC = () => {
           <ArrowLeft className="h-5 w-5 text-gray-600" />
         </button>
         <div>
-          <h1 className="text-2xl font-semibold text-gray-800">Follow-up Visit</h1>
+          <h1 className="text-2xl font-semibold text-gray-800">EXAM FORM---REEVALUATION</h1>
           <p className="text-gray-600">
             Patient: {patient.firstName} {patient.lastName}
+          </p>
+          <p className="text-gray-600">
+            Date: {new Date().toLocaleDateString()}
           </p>
         </div>
       </div>
@@ -389,13 +261,19 @@ const FollowupVisitForm: React.FC = () => {
               </p>
               <div className="mt-2">
                 <button
-                  onClick={loadSavedForm}
+                  onClick={() => {
+                    setFormData(JSON.parse(localFormData));
+                    setLocalFormData(null);
+                  }}
                   className="mr-2 text-sm font-medium text-yellow-700 hover:text-yellow-600"
                 >
                   Load saved form
                 </button>
                 <button
-                  onClick={discardSavedForm}
+                  onClick={() => {
+                    localStorage.removeItem(`followupVisit_${id}`);
+                    setLocalFormData(null);
+                  }}
                   className="text-sm font-medium text-gray-600 hover:text-gray-500"
                 >
                   Discard
@@ -430,293 +308,336 @@ const FollowupVisitForm: React.FC = () => {
               <option value="">Select previous visit</option>
               {previousVisits.map((visit) => (
                 <option key={visit._id} value={visit._id}>
-                  {new Date(visit.date).toLocaleDateString()} - {visit.visitType === 'initial' ? 'Initial Visit' : 'Follow-up'}
+                  {new Date(visit.date).toLocaleDateString()} - {visit.__t === 'initial' ? 'Initial Visit' : 'Follow-up'}
                 </option>
               ))}
             </select>
           </div>
 
-          {/* Progress Notes */}
+          {/* Areas */}
           <div>
-            <label htmlFor="progressNotes" className="block text-sm font-medium text-gray-700 mb-1">
-              Progress Notes*
-            </label>
-            <textarea
-              id="progressNotes"
-              name="progressNotes"
-              value={formData.progressNotes}
+            <label className="block text-sm font-medium text-gray-700 mb-1">Areas: Auto generated from Initial</label>
+            <div className="flex items-center space-x-4">
+              <div className="flex items-center">
+                <input
+                  id="areasImproving"
+                  name="areasImproving"
+                  type="checkbox"
+                  checked={formData.areasImproving}
+                  onChange={handleChange}
+                  className="focus:ring-blue-500 h-4 w-4 text-blue-600 border-gray-300 rounded"
+                />
+                <label htmlFor="areasImproving" className="ml-2 block text-sm text-gray-900">Improving</label>
+              </div>
+              <div className="flex items-center">
+                <input
+                  id="areasExacerbated"
+                  name="areasExacerbated"
+                  type="checkbox"
+                  checked={formData.areasExacerbated}
+                  onChange={handleChange}
+                  className="focus:ring-blue-500 h-4 w-4 text-blue-600 border-gray-300 rounded"
+                />
+                <label htmlFor="areasExacerbated" className="ml-2 block text-sm text-gray-900">Exacerbated</label>
+              </div>
+              <div className="flex items-center">
+                <input
+                  id="areasSame"
+                  name="areasSame"
+                  type="checkbox"
+                  checked={formData.areasSame}
+                  onChange={handleChange}
+                  className="focus:ring-blue-500 h-4 w-4 text-blue-600 border-gray-300 rounded"
+                />
+                <label htmlFor="areasSame" className="ml-2 block text-sm text-gray-900">Same</label>
+              </div>
+            </div>
+          </div>
+
+          {/* Muscle Palpation */}
+          <div>
+            <label htmlFor="musclePalpation" className="block text-sm font-medium text-gray-700 mb-1">Muscle Palpation: </label>
+            <input
+              type="text"
+              id="musclePalpation"
+              name="musclePalpation"
+              value={formData.musclePalpation}
               onChange={handleChange}
-              rows={4}
-              required
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-              placeholder="Progress since last visit"
+              placeholder="List of muscles specific to that body part"
             />
           </div>
 
-          {/* Vital Signs */}
+          {/* Pain Radiating */}
           <div>
-            <h3 className="text-lg font-medium text-gray-900 mb-3">Vital Signs</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              <div>
-                <label htmlFor="temperature" className="block text-sm font-medium text-gray-700 mb-1">
-                  Temperature (°F)
-                </label>
-                <input
-                  type="number"
-                  step="0.1"
-                  id="temperature"
-                  name="temperature"
-                  value={formData.vitalSigns.temperature}
-                  onChange={handleVitalSignsChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                />
-              </div>
-              <div>
-                <label htmlFor="heartRate" className="block text-sm font-medium text-gray-700 mb-1">
-                  Heart Rate (bpm)
-                </label>
-                <input
-                  type="number"
-                  id="heartRate"
-                  name="heartRate"
-                  value={formData.vitalSigns.heartRate}
-                  onChange={handleVitalSignsChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                />
-              </div>
-              <div>
-                <label htmlFor="respiratoryRate" className="block text-sm font-medium text-gray-700 mb-1">
-                  Respiratory Rate (breaths/min)
-                </label>
-                <input
-                  type="number"
-                  id="respiratoryRate"
-                  name="respiratoryRate"
-                  value={formData.vitalSigns.respiratoryRate}
-                  onChange={handleVitalSignsChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                />
-              </div>
-              <div>
-                <label htmlFor="bloodPressure" className="block text-sm font-medium text-gray-700 mb-1">
-                  Blood Pressure (mmHg)
-                </label>
-                <input
-                  type="text"
-                  id="bloodPressure"
-                  name="bloodPressure"
-                  value={formData.vitalSigns.bloodPressure}
-                  onChange={handleVitalSignsChange}
-                  placeholder="e.g., 120/80"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                />
-              </div>
-              <div>
-                <label htmlFor="oxygenSaturation" className="block text-sm font-medium text-gray-700 mb-1">
-                  Oxygen Saturation (%)
-                </label>
-                <input
-                  type="number"
-                  id="oxygenSaturation"
-                  name="oxygenSaturation"
-                  value={formData.vitalSigns.oxygenSaturation}
-                  onChange={handleVitalSignsChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                />
-              </div>
-              <div>
-                <label htmlFor="weight" className="block text-sm font-medium text-gray-700 mb-1">
-                  Weight (kg)
-                </label>
-                <input
-                  type="number"
-                  step="0.1"
-                  id="weight"
-                  name="weight"
-                  value={formData.vitalSigns.weight}
-                  onChange={handleVitalSignsChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Current Symptoms */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Current Symptoms</label>
-            {formData.currentSymptoms.map((symptom, index) => (
-              <div key={`symptom-${index}`} className="flex items-center mb-2">
-                <input
-                  type="text"
-                  value={symptom}
-                  onChange={(e) => handleArrayChange('currentSymptoms', index, e.target.value)}
-                  className="flex-grow px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="Enter symptom"
-                />
-                {formData.currentSymptoms.length > 1 && (
-                  <button
-                    type="button"
-                    onClick={() => removeArrayItem('currentSymptoms', index)}
-                    className="ml-2 p-2 text-red-600 hover:text-red-800"
-                  >
-                    Remove
-                  </button>
-                )}
-              </div>
-            ))}
-            <button
-              type="button"
-              onClick={() => addArrayItem('currentSymptoms')}
-              className="mt-1 text-sm text-blue-600 hover:text-blue-800"
-            >
-              + Add Symptom
-            </button>
-          </div>
-
-          {/* Assessment Update */}
-          <div>
-            <label htmlFor="assessmentUpdate" className="block text-sm font-medium text-gray-700 mb-1">
-              Assessment Update*
-            </label>
-            <textarea
-              id="assessmentUpdate"
-              name="assessmentUpdate"
-              value={formData.assessmentUpdate}
+            <label htmlFor="painRadiating" className="block text-sm font-medium text-gray-700 mb-1">Pain Radiating: </label>
+            <input
+              type="text"
+              id="painRadiating"
+              name="painRadiating"
+              value={formData.painRadiating}
               onChange={handleChange}
-              rows={4}
-              required
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-              placeholder="Updated clinical assessment"
             />
           </div>
 
-          {/* Plan Update */}
+          {/* ROM */}
           <div>
-            <h3 className="text-lg font-medium text-gray-900 mb-3">Plan Update</h3>
-            
-            {/* Medications */}
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-2">Medications</label>
-              {formData.planUpdate.medications.map((medication, index) => (
-                <div key={`medication-${index}`} className="p-3 border border-gray-200 rounded-md mb-3">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-2">
-                    <div>
-                      <label className="block text-xs text-gray-500 mb-1">Medication Name</label>
-                      <input
-                        type="text"
-                        value={medication.name}
-                        onChange={(e) => handleMedicationChange(index, 'name', e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                        placeholder="Medication name"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs text-gray-500 mb-1">Dosage</label>
-                      <input
-                        type="text"
-                        value={medication.dosage}
-                        onChange={(e) => handleMedicationChange(index, 'dosage', e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                        placeholder="e.g., 500mg"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs text-gray-500 mb-1">Frequency</label>
-                      <input
-                        type="text"
-                        value={medication.frequency}
-                        onChange={(e) => handleMedicationChange(index, 'frequency', e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                        placeholder="e.g., twice daily"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs text-gray-500 mb-1">Duration</label>
-                      <input
-                        type="text"
-                        value={medication.duration}
-                        onChange={(e) => handleMedicationChange(index, 'duration', e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                        placeholder="e.g., 7 days"
-                      />
-                    </div>
-                    <div className="md:col-span-2">
-                      <label className="block text-xs text-gray-500 mb-1">Changes from Previous</label>
-                      <input
-                        type="text"
-                        value={medication.changes}
-                        onChange={(e) => handleMedicationChange(index, 'changes', e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                        placeholder="e.g., increased dosage, new medication, discontinued"
-                      />
-                    </div>
-                  </div>
-                  {formData.planUpdate.medications.length > 1 && (
-                    <button
-                      type="button"
-                      onClick={() => removeArrayItem('medications', index)}
-                      className="text-sm text-red-600 hover:text-red-800"
-                    >
-                      Remove Medication
-                    </button>
-                  )}
+            <label className="block text-sm font-medium text-gray-700 mb-1">ROM:</label>
+            <div className="flex items-center space-x-4">
+              <div className="flex items-center">
+                <input
+                  id="romWnlNoPain"
+                  name="romWnlNoPain"
+                  type="checkbox"
+                  checked={formData.romWnlNoPain}
+                  onChange={handleChange}
+                  className="focus:ring-blue-500 h-4 w-4 text-blue-600 border-gray-300 rounded"
+                />
+                <label htmlFor="romWnlNoPain" className="ml-2 block text-sm text-gray-900">WNL (No Pain)</label>
+              </div>
+              <div className="flex items-center">
+                <input
+                  id="romWnlWithPain"
+                  name="romWnlWithPain"
+                  type="checkbox"
+                  checked={formData.romWnlWithPain}
+                  onChange={handleChange}
+                  className="focus:ring-blue-500 h-4 w-4 text-blue-600 border-gray-300 rounded"
+                />
+                <label htmlFor="romWnlWithPain" className="ml-2 block text-sm text-gray-900">WNL (With Pain)</label>
+              </div>
+              <div className="flex items-center">
+                <input
+                  id="romImproved"
+                  name="romImproved"
+                  type="checkbox"
+                  checked={formData.romImproved}
+                  onChange={handleChange}
+                  className="focus:ring-blue-500 h-4 w-4 text-blue-600 border-gray-300 rounded"
+                />
+                <label htmlFor="romImproved" className="ml-2 block text-sm text-gray-900">Improved</label>
+              </div>
+              <div className="flex items-center">
+                <input
+                  id="romDecreased"
+                  name="romDecreased"
+                  type="checkbox"
+                  checked={formData.romDecreased}
+                  onChange={handleChange}
+                  className="focus:ring-blue-500 h-4 w-4 text-blue-600 border-gray-300 rounded"
+                />
+                <label htmlFor="romDecreased" className="ml-2 block text-sm text-gray-900">Decreased</label>
+              </div>
+               <div className="flex items-center">
+                <input
+                  id="romSame"
+                  name="romSame"
+                  type="checkbox"
+                  checked={formData.romSame}
+                  onChange={handleChange}
+                  className="focus:ring-blue-500 h-4 w-4 text-blue-600 border-gray-300 rounded"
+                />
+                <label htmlFor="romSame" className="ml-2 block text-sm text-gray-900">Same</label>
+              </div>
+            </div>
+          </div>
+
+          {/* Orthos */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Orthos:</label>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label htmlFor="orthos.tests" className="block text-xs text-gray-500 mb-1">List of tests specific for body part</label>
+                <input
+                  type="text"
+                  id="orthos.tests"
+                  name="orthos.tests"
+                  value={formData.orthos.tests}
+                  onChange={handleChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+              <div>
+                 <label htmlFor="orthos.result" className="block text-xs text-gray-500 mb-1">Result</label>
+                 <input
+                  type="text"
+                  id="orthos.result"
+                  name="orthos.result"
+                  value={formData.orthos.result}
+                  onChange={handleChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Activities that still cause pain */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Activities that still cause pain:</label>
+             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                   <input
+                      type="text"
+                      id="activitiesCausePain"
+                      name="activitiesCausePain"
+                      value={formData.activitiesCausePain}
+                      onChange={handleChange}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                       placeholder="List of things specific to selected body part"
+                    />
                 </div>
-              ))}
-              <button
-                type="button"
-                onClick={() => addArrayItem('medications')}
-                className="mt-1 text-sm text-blue-600 hover:text-blue-800"
-              >
-                + Add Medication
-              </button>
-            </div>
-            
-            {/* New Tests */}
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-2">New Tests</label>
-              {formData.planUpdate.newTests.map((test, index) => (
-                <div key={`test-${index}`} className="flex items-center mb-2">
-                  <input
-                    type="text"
-                    value={test}
-                    onChange={(e) => handleArrayChange('newTests', index, e.target.value)}
-                    className="flex-grow px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="Enter new test or imaging"
-                  />
-                  {formData.planUpdate.newTests.length > 1 && (
-                    <button
-                      type="button"
-                      onClick={() => removeArrayItem('newTests', index)}
-                      className="ml-2 p-2 text-red-600 hover:text-red-800"
-                    >
-                      Remove
-                    </button>
-                  )}
+                 <div>
+                    <label htmlFor="activitiesCausePainOther" className="block text-xs text-gray-500 mb-1">Other:</label>
+                    <input
+                      type="text"
+                      id="activitiesCausePainOther"
+                      name="activitiesCausePainOther"
+                      value={formData.activitiesCausePainOther}
+                      onChange={handleChange}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    />
                 </div>
-              ))}
-              <button
-                type="button"
-                onClick={() => addArrayItem('newTests')}
-                className="mt-1 text-sm text-blue-600 hover:text-blue-800"
-              >
-                + Add Test
-              </button>
             </div>
-            
-            {/* Next Follow-up */}
-            <div>
-              <label htmlFor="nextFollowUp" className="block text-sm font-medium text-gray-700 mb-1">
-                Next Follow-up
-              </label>
-              <input
-                type="date"
-                id="nextFollowUp"
-                name="planUpdate.nextFollowUp"
-                value={formData.planUpdate.nextFollowUp}
-                onChange={handleChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-              />
+          </div>
+
+          <h2 className="text-xl font-semibold text-gray-800 mt-6 mb-4">ASSESSMENT AND PLAN</h2>
+
+          {/* Treatment plan */}
+           <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Treatment plan:</label>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <input
+                  type="text"
+                  id="treatmentPlan.treatments"
+                  name="treatmentPlan.treatments"
+                  value={formData.treatmentPlan.treatments}
+                  onChange={handleChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="List of treatments"
+                />
+              </div>
+              <div>
+                <input
+                  type="text"
+                  id="treatmentPlan.timesPerWeek"
+                  name="treatmentPlan.timesPerWeek"
+                  value={formData.treatmentPlan.timesPerWeek}
+                  onChange={handleChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="Times per week"
+                />
+              </div>
             </div>
+          </div>
+
+          {/* Overall response to care */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Overall response to care:</label>
+            <div className="flex items-center space-x-4">
+              <div className="flex items-center">
+                <input
+                  id="overallResponseImproving"
+                  name="overallResponse.improving"
+                  type="checkbox"
+                  checked={formData.overallResponse.improving}
+                  onChange={handleChange}
+                  className="focus:ring-blue-500 h-4 w-4 text-blue-600 border-gray-300 rounded"
+                />
+                <label htmlFor="overallResponseImproving" className="ml-2 block text-sm text-gray-900">Improving</label>
+              </div>
+              <div className="flex items-center">
+                <input
+                  id="overallResponseWorse"
+                  name="overallResponse.worse"
+                  type="checkbox"
+                  checked={formData.overallResponse.worse}
+                  onChange={handleChange}
+                  className="focus:ring-blue-500 h-4 w-4 text-blue-600 border-gray-300 rounded"
+                />
+                <label htmlFor="overallResponseWorse" className="ml-2 block text-sm text-gray-900">Worse</label>
+              </div>
+              <div className="flex items-center">
+                <input
+                  id="overallResponseSame"
+                  name="overallResponse.same"
+                  type="checkbox"
+                  checked={formData.overallResponse.same}
+                  onChange={handleChange}
+                  className="focus:ring-blue-500 h-4 w-4 text-blue-600 border-gray-300 rounded"
+                />
+                <label htmlFor="overallResponseSame" className="ml-2 block text-sm text-gray-900">Same</label>
+              </div>
+            </div>
+          </div>
+
+          {/* Referrals */}
+          <div>
+            <label htmlFor="referrals" className="block text-sm font-medium text-gray-700 mb-1">Referrals: </label>
+            <input
+              type="text"
+              id="referrals"
+              name="referrals"
+              value={formData.referrals}
+              onChange={handleChange}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+              placeholder="List of Imaging and specialists"
+            />
+          </div>
+
+          {/* Review of diagnostic study with the patient */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Review of diagnostic study with the patient:</label>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label htmlFor="diagnosticStudy.study" className="block text-xs text-gray-500 mb-1">Study</label>
+                <input
+                  type="text"
+                  id="diagnosticStudy.study"
+                  name="diagnosticStudy.study"
+                  value={formData.diagnosticStudy.study}
+                  onChange={handleChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+              <div>
+                <label htmlFor="diagnosticStudy.bodyPart" className="block text-xs text-gray-500 mb-1">Body Part</label>
+                <input
+                  type="text"
+                  id="diagnosticStudy.bodyPart"
+                  name="diagnosticStudy.bodyPart"
+                  value={formData.diagnosticStudy.bodyPart}
+                  onChange={handleChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+              <div>
+                <label htmlFor="diagnosticStudy.result" className="block text-xs text-gray-500 mb-1">Result:</label>
+                <input
+                  type="text"
+                  id="diagnosticStudy.result"
+                  name="diagnosticStudy.result"
+                  value={formData.diagnosticStudy.result}
+                  onChange={handleChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Home Care */}
+          <div>
+            <label htmlFor="homeCare" className="block text-sm font-medium text-gray-700 mb-1">Home Care: </label>
+            <input
+              type="text"
+              id="homeCare"
+              name="homeCare"
+              value={formData.homeCare}
+              onChange={handleChange}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+              placeholder="List of home care"
+            />
           </div>
 
           {/* Additional Notes */}
