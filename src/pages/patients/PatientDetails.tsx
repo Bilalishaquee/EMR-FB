@@ -768,8 +768,15 @@ setInvoiceCount(invoiceResponse.data.invoices.length);
                           Dr. {visit.doctor.firstName} {visit.doctor.lastName}
                         </td>
                         <td className="px-6 py-4 text-sm text-gray-900 max-w-xs truncate">
-                          {visit.notes || 'No notes provided'}
-                        </td>
+  {visit.visitType === 'initial' && visit.otherNotes
+    ? visit.otherNotes
+    : visit.visitType === 'followup' && visit.notes
+    ? visit.notes
+    : visit.visitType === 'discharge' && visit.referralsNotes
+    ? visit.referralsNotes
+    : 'No notes provided'}
+</td>
+
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                         <Link 
   to={`/visits/${visit._id}`} 

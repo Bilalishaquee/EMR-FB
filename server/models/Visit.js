@@ -29,14 +29,13 @@ const baseVisitSchema = new mongoose.Schema(
 const Visit = mongoose.model('Visit', baseVisitSchema);
 
 const initialVisitSchema = new mongoose.Schema({
-  chiefComplaint: { type: String, required: true }, // ✅ REQUIRED
+  chiefComplaint: { type: String, required: true },
   chiropracticAdjustment: [String],
   chiropracticOther: [String],
   acupuncture: [String],
   acupunctureOther: [String], 
   physiotherapy: [String],
   rehabilitationExercises: [String],
-  
   
   durationFrequency: {
     timesPerWeek: { type: Number },
@@ -61,12 +60,15 @@ const initialVisitSchema = new mongoose.Schema({
   },
 
   disabilityDuration: String,
-  otherNotes: String,
+
+  // ✅ Only keep this one
+  otherNotes: { type: String },
 
   patient: { type: mongoose.Schema.Types.ObjectId, ref: 'Patient', required: true },
-  doctor: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-  // visitType: { type: String, enum: ['initial'], default: 'initial' }
+  doctor: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true }
+
 }, { timestamps: true });
+
 
 
 // Follow-up Visit Schema
