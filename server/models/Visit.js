@@ -114,29 +114,41 @@ const followupVisitSchema = new mongoose.Schema({
 });
 
 
-
 // Discharge Visit Schema
 const dischargeVisitSchema = new mongoose.Schema({
-  treatmentSummary: String,
-  dischargeDiagnosis: [String],
-  medicationsAtDischarge: [{
-    name: String,
-    dosage: String,
-    frequency: String,
-    duration: String
-  }],
-  followUpInstructions: String,
-  returnPrecautions: [String],
-  dischargeStatus: {
-    type: String,
-    enum: ['improved', 'stable', 'other'],
-    required: true
-  }
+  areasImproving: Boolean,
+  areasExacerbated: Boolean,
+  areasSame: Boolean,
+
+  musclePalpation: String,
+  painRadiating: String,
+  romPercent: Number,
+  orthos: {
+    tests: String,
+    result: String
+  },
+  activitiesCausePain: String,
+  otherNotes: String,
+
+  prognosis: String, // selected prognosis
+  diagnosticStudy: {
+    study: String,
+    bodyPart: String,
+    result: String
+  },
+  futureMedicalCare: [String],
+  croftCriteria: String,
+  amaDisability: String,
+  homeCare: [String],
+  referralsNotes: String
 });
+
 
 // Discriminators (no `visitType` manually added here)
 const InitialVisit = Visit.discriminator('initial', initialVisitSchema);
 const FollowupVisit = Visit.discriminator('followup', followupVisitSchema);
 const DischargeVisit = Visit.discriminator('discharge', dischargeVisitSchema);
+
+
 
 export { Visit, InitialVisit, FollowupVisit, DischargeVisit };

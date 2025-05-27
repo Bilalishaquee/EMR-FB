@@ -577,101 +577,101 @@ const VisitDetails: React.FC = () => {
 
         {/* Discharge Visit Content */}
         {visit.visitType === 'discharge' && (
-          <div className="space-y-6">
-            {/* Treatment Summary */}
-            <div>
-              <h3 className="text-lg font-medium text-gray-900 mb-2">Treatment Summary</h3>
-              <p className="text-gray-800 whitespace-pre-line">{visit.treatmentSummary}</p>
-            </div>
+  <div className="space-y-6">
 
-            {/* Discharge Diagnosis */}
-            {visit.dischargeDiagnosis && visit.dischargeDiagnosis.length > 0 && (
-              <div>
-                <h3 className="text-lg font-medium text-gray-900 mb-2">Discharge Diagnosis</h3>
-                <ul className="list-disc pl-5 text-gray-800">
-                  {visit.dischargeDiagnosis.map((diagnosis, index) => (
-                    diagnosis && <li key={index}>{diagnosis}</li>
-                  ))}
-                </ul>
-              </div>
-            )}
+    <h2 className="text-xl font-bold text-gray-900">EXAM FORM — DISCHARGE</h2>
 
-            {/* Medications at Discharge */}
-            {visit.medicationsAtDischarge && visit.medicationsAtDischarge.length > 0 && (
-              <div>
-                <h3 className="text-lg font-medium text-gray-900 mb-2">Medications at Discharge</h3>
-                <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Medication
-                        </th>
-                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Dosage
-                        </th>
-                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Frequency
-                        </th>
-                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Duration
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                      {visit.medicationsAtDischarge.map((medication, index) => (
-                        medication.name && (
-                          <tr key={index}>
-                            <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-800">
-                              {medication.name}
-                            </td>
-                            <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-800">
-                              {medication.dosage}
-                            </td>
-                            <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-800">
-                              {medication.frequency}
-                            </td>
-                            <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-800">
-                              {medication.duration}
-                            </td>
-                          </tr>
-                        )
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            )}
+    <div>
+      <h3 className="font-medium text-gray-800">Areas:</h3>
+      <p className="text-gray-700">
+        {visit.areasImproving && 'Improving '}
+        {visit.areasExacerbated && 'Exacerbated '}
+        {visit.areasSame && 'Same '}
+      </p>
+    </div>
 
-            {/* Follow-up Instructions */}
-            {visit.followUpInstructions && (
-              <div>
-                <h3 className="text-lg font-medium text-gray-900 mb-2">Follow-up Instructions</h3>
-                <p className="text-gray-800 whitespace-pre-line">{visit.followUpInstructions}</p>
-              </div>
-            )}
+    <div>
+      <h3 className="font-medium text-gray-800">Muscle Palpation:</h3>
+      <p className="text-gray-700">{visit.musclePalpation}</p>
+    </div>
 
-            {/* Return Precautions */}
-            {visit.returnPrecautions && visit.returnPrecautions.length > 0 && (
-              <div>
-                <h3 className="text-lg font-medium text-gray-900 mb-2">Return Precautions</h3>
-                <ul className="list-disc pl-5 text-gray-800">
-                  {visit.returnPrecautions.map((precaution, index) => (
-                    precaution && <li key={index}>{precaution}</li>
-                  ))}
-                </ul>
-              </div>
-            )}
+    <div>
+      <h3 className="font-medium text-gray-800">Pain Radiating:</h3>
+      <p className="text-gray-700">{visit.painRadiating}</p>
+    </div>
 
-            {/* Discharge Status */}
-            {visit.dischargeStatus && (
-              <div>
-                <h3 className="text-lg font-medium text-gray-900 mb-2">Discharge Status</h3>
-                <p className="text-gray-800 capitalize">{visit.dischargeStatus}</p>
-              </div>
-            )}
-          </div>
-        )}
+    <div>
+      <h3 className="font-medium text-gray-800">ROM:</h3>
+      <p className="text-gray-700">{visit.romPercent}% of pre-injury</p>
+    </div>
+
+    <div>
+      <h3 className="font-medium text-gray-800">Orthos:</h3>
+      <p className="text-gray-700"><strong>Tests:</strong> {visit.orthos?.tests}</p>
+      <p className="text-gray-700"><strong>Result:</strong> {visit.orthos?.result}</p>
+    </div>
+
+    <div>
+      <h3 className="font-medium text-gray-800">Activities Causing Pain:</h3>
+      <p className="text-gray-700">{visit.activitiesCausePain}</p>
+    </div>
+
+    <div>
+      <h3 className="font-medium text-gray-800">Other Notes:</h3>
+      <p className="text-gray-700">{visit.otherNotes}</p>
+    </div>
+
+    <h2 className="text-xl font-bold text-gray-900 mt-6">ASSESSMENT AND PLAN</h2>
+
+    <div>
+      <h3 className="font-medium text-gray-800">Prognosis:</h3>
+      <p className="text-gray-700">{visit.prognosis}</p>
+    </div>
+
+    <div>
+      <h3 className="font-medium text-gray-800">Diagnostic Study:</h3>
+      <p className="text-gray-700">
+        <strong>Study:</strong> {visit.diagnosticStudy?.study} <br />
+        <strong>Body Part:</strong> {visit.diagnosticStudy?.bodyPart} <br />
+        <strong>Result:</strong> {visit.diagnosticStudy?.result}
+      </p>
+    </div>
+
+    <div>
+      <h3 className="font-medium text-gray-800">Recommended Future Medical Care:</h3>
+      <ul className="list-disc pl-5 text-gray-700">
+        {visit.futureMedicalCare?.map((item, idx) => (
+          <li key={idx}>{item}</li>
+        ))}
+      </ul>
+    </div>
+
+    <div>
+      <h3 className="font-medium text-gray-800">Croft Criteria:</h3>
+      <p className="text-gray-700">{visit.croftCriteria}</p>
+    </div>
+
+    <div>
+      <h3 className="font-medium text-gray-800">AMA Disability:</h3>
+      <p className="text-gray-700">{visit.amaDisability}</p>
+    </div>
+
+    <div>
+      <h3 className="font-medium text-gray-800">Home Care Instructions:</h3>
+      <ul className="list-disc pl-5 text-gray-700">
+        {visit.homeCare?.map((item, idx) => (
+          <li key={idx}>{item}</li>
+        ))}
+      </ul>
+    </div>
+
+    <div>
+      <h3 className="font-medium text-gray-800">Referrals / Notes:</h3>
+      <p className="text-gray-700">{visit.referralsNotes}</p>
+    </div>
+  </div>
+)}
+
 
         {/* Additional Notes */}
         {visit.notes && (
