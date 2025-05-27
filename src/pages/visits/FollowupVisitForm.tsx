@@ -22,7 +22,7 @@ interface Visit {
 const FollowupVisitForm: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user: _user } = useAuth(); // Prefix with _ to indicate intentionally unused
   
   const [patient, setPatient] = useState<Patient | null>(null);
   const [previousVisits, setPreviousVisits] = useState<Visit[]>([]);

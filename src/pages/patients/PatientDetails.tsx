@@ -134,14 +134,14 @@ const PatientDetails: React.FC = () => {
   const [visits, setVisits] = useState<Visit[]>([]);
   const [selectedVisit, setSelectedVisit] = useState<Visit | null>(null);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
-  const [invoices, setInvoices] = useState<Invoice[]>([]);
+  // Using _ prefix to indicate this is intentionally unused
+  const [_invoices, setInvoices] = useState<Invoice[]>([]);
   const [invoiceCount, setInvoiceCount] = useState(0);
 
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('overview');
   
-  // Remove unused Invoice import warning by using it in a type-only context
-type InvoiceType = Invoice;
+  // Invoice type is used in the state type definition
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
     personalInfo: false,
     contactInfo: false,
