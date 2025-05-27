@@ -12,7 +12,8 @@ import {
   Printer,
   ChevronDown,
   ChevronUp,
-  Download
+  Download,
+  FileArchive
 } from 'lucide-react';
 import { useReactToPrint } from 'react-to-print';
 import { jsPDF } from 'jspdf';
@@ -68,34 +69,134 @@ interface Patient {
   createdAt: string;
   updatedAt: string;
 }
+
 interface Visit {
   _id: string;
-  patient: string;
-  doctor: { _id: string; firstName: string; lastName: string };
+  patient: {
+    _id: string;
+    firstName: string;
+    lastName: string;
+  };
+  doctor: {
+    _id: string;
+    firstName: string;
+    lastName: string;
+  };
   date: string;
   visitType: string;
-  notes: string;
-  otherNotes?: string;
-  referralsNotes?: string;
-  createdAt: string;
+  notes?: string;
   __t: string;
 
-  rationale?: string;
-  scheduleOfCare?: string;
-  physicalModality?: string;
-  reevaluation?: string;
-  returnFrequency?: string;
-  referral?: string;
-  restrictions?: string;
-  plan?: {
+  // Initial Visit fields
+  chiefComplaint?: string;
+  chiropracticAdjustment?: string[];
+  chiropracticOther?: string;
+  acupuncture?: string[];
+  acupunctureOther?: string;
+  physiotherapy?: string[];
+  rehabilitationExercises?: string[];
+
+  durationFrequency?: {
+    timesPerWeek?: number;
+    reEvalInWeeks?: number;
+  };
+
+  referrals?: string[]; // InitialVisit has referrals as array
+
+  imaging?: {
+    xray?: string[];
+    mri?: string[];
+    ct?: string[];
+  };
+
+  diagnosticUltrasound?: string;
+  nerveStudy?: string[];
+
+  restrictions?: {
+    avoidActivityWeeks?: number;
+    liftingLimitLbs?: number;
+    avoidProlongedSitting?: boolean;
+  };
+
+  disabilityDuration?: string;
+  otherNotes?: string;
+
+  // Follow-up Visit fields (matching the EXAM FORM---REEVALUATION template)
+  areas?: string;
+  areasImproving?: boolean;
+  areasExacerbated?: boolean;
+  areasSame?: boolean;
+  musclePalpation?: string;
+  painRadiating?: string;
+  romWnlNoPain?: boolean;
+  romWnlWithPain?: boolean;
+  romImproved?: boolean;
+  romDecreased?: boolean;
+  romSame?: boolean;
+  orthos?: {
+    tests?: string;
+    result?: string;
+  };
+  activitiesCausePain?: string;
+  activitiesCausePainOther?: string;
+  treatmentPlan?: {
+    treatments?: string;
+    timesPerWeek?: string;
+  };
+  overallResponse?: {
+    improving?: boolean;
+    worse?: boolean;
+    same?: boolean;
+  };
+  diagnosticStudy?: {
+    study?: string;
+    bodyPart?: string;
+    result?: string;
+  };
+  homeCare?: string[]; // FollowupVisit and DischargeVisit have homeCare as array
+
+  // Discharge Visit fields
+  treatmentSummary?: string;
+  dischargeDiagnosis?: string[];
+  medicationsAtDischarge?: Array<{
+    name: string;
+    dosage: string;
+    frequency: string;
+    duration: string;
+  }>;
+  followUpInstructions?: string;
+  returnPrecautions?: string[];
+  dischargeStatus?: string;
+
+  // Fields observed in VisitDetails.tsx for various visit types, not consistently in previous interface
+  assessment?: string; // Used in InitialVisitDetails
+  progressNotes?: string; // Used in FollowupVisitDetails for title/check
+  assessmentUpdate?: string; // Used in FollowupVisitDetails
+  romPercent?: string; // Used in DischargeVisitDetails
+  prognosis?: string; // Used in DischargeVisitDetails
+  futureMedicalCare?: string[]; // Used in DischargeVisitDetails
+  croftCriteria?: string; // Used in DischargeVisitDetails
+  amaDisability?: string; // Used in DischargeVisitDetails
+  referralsNotes?: string; // Used in DischargeVisitDetails (as notes for referrals)
+
+   // Plan details - matching structure in VisitDetails.tsx
+   plan?: {
     diagnosis?: string[];
     labTests?: string[];
     imaging?: string[];
     medications?: { name: string; dosage: string; frequency: string }[];
   };
+
+   // Referral field in Followup and Discharge is a string
+   referral?: string;
+
+   // Missing fields identified from linter errors/VisitDetails.tsx review
+   rationale?: string;
+   scheduleOfCare?: string;
+   physicalModality?: string;
+   reevaluation?: string;
+   returnFrequency?: string;
 }
-
-
 
 interface Appointment {
   _id: string;
@@ -112,7 +213,7 @@ interface Appointment {
   };
   type: string;
   status: string;
-  notes: string;
+  notes?: string; // Added notes field
 }
 
 interface Invoice {
@@ -124,7 +225,7 @@ interface Invoice {
   status: string;
 }
 
-const PatientDetails: React.FC = () => {
+const PatientDetails: React.FC<{}> = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -175,7 +276,7 @@ setInvoiceCount(invoiceResponse.data.totalInvoices);
 
         
         // We don't need to fetch invoices here anymore as BillingList will handle it
-        setInvoices([]); // Clear the local invoices state
+        // setInvoices([]); // Clear the local invoices state
       } catch (error) {
         console.error('Error fetching patient data:', error);
       } finally {
@@ -253,6 +354,441 @@ setInvoiceCount(invoiceResponse.data.totalInvoices);
     doc.save(`Patient_${patient.firstName}_${patient.lastName}.pdf`);
   };
 
+  const generateFullReport = async (): Promise<void> => {
+    try {
+      if (!patient || visits.length === 0) {
+        console.error('No patient data or visits available');
+        return;
+      }
+
+      const doc = new jsPDF();
+      const margin = 15;
+      const pageWidth = doc.internal.pageSize.width;
+      const pageHeight = doc.internal.pageSize.height;
+      let yOffset = 20;
+      const lineHeight = 7;
+
+      // Add header
+      doc.setFontSize(12);
+      doc.text('Tina Taguhi Lusikyan', margin, yOffset);
+      yOffset += lineHeight;
+      doc.text('100 W. Broadway, Suite 1040', margin, yOffset);
+      yOffset += lineHeight;
+      doc.text('Glendale, CA 91210', margin, yOffset);
+      yOffset += lineHeight * 2;
+
+      // Add patient information table
+      doc.setFontSize(10);
+      doc.text('Patient Information', margin + 60, yOffset);
+      yOffset += lineHeight;
+      
+      // Draw table borders
+      doc.rect(margin, yOffset, pageWidth - margin * 2, lineHeight * 5);
+      doc.line(margin + 15, yOffset, margin + 15, yOffset + lineHeight * 5);
+      doc.line(margin + 30, yOffset, margin + 30, yOffset + lineHeight * 5);
+      doc.line(margin + 45, yOffset, margin + 45, yOffset + lineHeight * 5);
+      
+      // Horizontal lines
+      for (let i = 1; i < 5; i++) {
+        doc.line(margin, yOffset + lineHeight * i, pageWidth - margin, yOffset + lineHeight * i);
+      }
+
+      // Add patient info content
+      doc.setFont('helvetica', 'bold');
+      doc.text('Patient', margin + 2, yOffset + lineHeight * 0.7);
+      doc.text('Date of Birth', margin + 2, yOffset + lineHeight * 1.7);
+      doc.text('Patient Gender', margin + 2, yOffset + lineHeight * 2.7);
+      doc.text('Marital Status', margin + 2, yOffset + lineHeight * 3.7);
+      doc.text('Injury', margin + 2, yOffset + lineHeight * 4.7);
+
+      doc.setFont('helvetica', 'normal');
+      doc.text(`${patient.firstName} ${patient.lastName}`, margin + 17, yOffset + lineHeight * 0.7);
+      doc.text(new Date(patient.dateOfBirth).toLocaleDateString(), margin + 17, yOffset + lineHeight * 1.7);
+      doc.text(patient.gender, margin + 17, yOffset + lineHeight * 2.7);
+      doc.text('N/A', margin + 17, yOffset + lineHeight * 3.7); // Marital status not in our data
+      doc.text('N/A', margin + 17, yOffset + lineHeight * 4.7); // Injury date not in our data
+
+      yOffset += lineHeight * 6;
+
+      // Process each visit
+      visits.forEach((visit: Visit) => {
+        // Check if we need a new page
+        if (yOffset > pageHeight - 30) {
+          doc.addPage();
+          yOffset = 20;
+        }
+
+        // Visit header
+        doc.setFontSize(14);
+        doc.setFont('helvetica', 'bold');
+        const visitType = visit.visitType === 'initial' ? 'Initial' : 
+                         visit.visitType === 'followup' ? 'Progress' : 'Final';
+        doc.text(`Narrative Encounter - Exam -- ${visitType} ${patient.firstName} ${patient.lastName}`, margin, yOffset);
+        yOffset += lineHeight * 2;
+
+        doc.setFontSize(12);
+        doc.text(new Date(visit.date).toLocaleDateString(), margin, yOffset);
+        yOffset += lineHeight * 2;
+
+        // Subjective section
+        doc.setFont('helvetica', 'bold');
+        doc.text('Subjective', margin, yOffset);
+        yOffset += lineHeight;
+
+        // Chief Complaint
+        if (visit.chiefComplaint) {
+          doc.setFont('helvetica', 'bold');
+          doc.text('Chief Complaint', margin + 5, yOffset);
+          yOffset += lineHeight;
+
+          doc.setFont('helvetica', 'normal');
+          const complaintStatus = visit.areasImproving ? 'Improving' :
+                                visit.areasExacerbated ? 'Worse' :
+                                visit.areasSame ? 'Same' : undefined;
+          const text = complaintStatus ? 
+            `• ${visit.chiefComplaint} (${complaintStatus})` :
+            `• ${visit.chiefComplaint}`;
+          doc.text(text, margin + 10, yOffset);
+          yOffset += lineHeight;
+        }
+
+        // History of Present Illness (from medical history)
+        if (visit.visitType === 'initial' && patient.medicalHistory) {
+          doc.setFont('helvetica', 'bold');
+          doc.text('History of Present Illness', margin + 5, yOffset);
+          yOffset += lineHeight;
+
+          doc.setFont('helvetica', 'normal');
+          const historyItems = [
+            ...(patient.medicalHistory.conditions || []), // Ensure it's an array
+            ...(patient.medicalHistory.medications || []),
+            ...(patient.medicalHistory.allergies || [])
+          ];
+          historyItems.forEach(item => {
+            if (item) {
+              doc.text(`• ${item}`, margin + 10, yOffset);
+              yOffset += lineHeight;
+            }
+          });
+          if (historyItems.length > 0) yOffset += lineHeight; // Add space if items were added
+        }
+
+        // Past, Family, and Social History
+        if (visit.visitType === 'initial' && patient.medicalHistory) {
+          doc.setFont('helvetica', 'bold');
+          doc.text('Past, Family, and Social History', margin + 5, yOffset);
+          yOffset += lineHeight;
+
+          // Social History
+          doc.setFont('helvetica', 'bold');
+          doc.text('Social History', margin + 10, yOffset);
+          yOffset += lineHeight;
+
+          doc.setFont('helvetica', 'normal');
+          if (patient.address?.street || patient.address?.city || patient.address?.state || patient.address?.country) {
+            let addressLine = `• Address: `;
+            if (patient.address.street) addressLine += patient.address.street;
+            if (patient.address.city || patient.address.state) {
+              if (patient.address.street) addressLine += ', ';
+              addressLine += `${patient.address.city || ''}${patient.address.city && patient.address.state ? ', ' : ''}${patient.address.state || ''} ${patient.address.zipCode || ''}`.trim();
+            }
+            if (patient.address.country) {
+               if (patient.address.street || patient.address.city || patient.address.state) addressLine += ', ';
+               addressLine += patient.address.country;
+            }
+             if (addressLine !== `• Address: `) {
+                doc.text(addressLine, margin + 15, yOffset);
+                yOffset += lineHeight;
+             }
+          }
+          if (patient.phone) {
+            doc.text(`• Phone: ${patient.phone}`, margin + 15, yOffset);
+            yOffset += lineHeight;
+          }
+          if (patient.address?.street || patient.address?.city || patient.address?.state || patient.address?.country || patient.phone) {
+               yOffset += lineHeight; // Add space if social history was added
+          }
+
+          // Family History
+          doc.setFont('helvetica', 'bold');
+          doc.text('Family History', margin + 10, yOffset);
+          yOffset += lineHeight;
+
+          doc.setFont('helvetica', 'normal');
+          if (patient.medicalHistory.familyHistory && patient.medicalHistory.familyHistory.length > 0) {
+             patient.medicalHistory.familyHistory.forEach(item => {
+              if (item) {
+                doc.text(`• ${item}`, margin + 15, yOffset);
+                yOffset += lineHeight;
+              }
+            });
+             if (patient.medicalHistory.familyHistory.some(item => item)) yOffset += lineHeight; // Add space if family history was added
+          } else {
+             doc.text('• No family history provided', margin + 15, yOffset);
+             yOffset += lineHeight * 2; // Add space even if no history
+          }
+
+          // Past History (Surgeries)
+          doc.setFont('helvetica', 'bold');
+          doc.text('Past History', margin + 10, yOffset);
+          yOffset += lineHeight;
+
+          doc.setFont('helvetica', 'normal');
+          if (patient.medicalHistory.surgeries && patient.medicalHistory.surgeries.length > 0) {
+             patient.medicalHistory.surgeries.forEach(item => {
+              if (item) {
+                doc.text(`• ${item}`, margin + 15, yOffset);
+                yOffset += lineHeight;
+              }
+            });
+             if (patient.medicalHistory.surgeries.some(item => item)) yOffset += lineHeight; // Add space if past history was added
+          } else {
+             doc.text('• No past surgeries recorded', margin + 15, yOffset);
+             yOffset += lineHeight * 2; // Add space even if no surgeries
+          }
+        }
+
+        // Objective section
+        doc.setFont('helvetica', 'bold');
+        doc.text('Objective', margin, yOffset);
+        yOffset += lineHeight;
+
+        // Neurological
+        if (visit.nerveStudy && visit.nerveStudy.length > 0) {
+          doc.setFont('helvetica', 'bold');
+          doc.text('Examination Neurological', margin + 5, yOffset);
+          yOffset += lineHeight;
+
+          doc.setFont('helvetica', 'normal');
+          visit.nerveStudy.forEach(item => {
+            doc.text(`• ${item}`, margin + 10, yOffset);
+            yOffset += lineHeight;
+          });
+          yOffset += lineHeight;
+        }
+
+        // Musculoskeletal
+        doc.setFont('helvetica', 'bold');
+        doc.text('Musculoskeletal', margin + 5, yOffset);
+        yOffset += lineHeight;
+
+        // Muscle Palpation
+        if (visit.musclePalpation) {
+          doc.setFont('helvetica', 'bold');
+          doc.text('Palpations', margin + 10, yOffset);
+          yOffset += lineHeight;
+
+          doc.setFont('helvetica', 'normal');
+          doc.text(`• ${visit.musclePalpation}`, margin + 15, yOffset);
+          yOffset += lineHeight;
+        }
+
+        // Range of Motion
+        if (visit.romWnlNoPain || visit.romWnlWithPain || visit.romImproved || visit.romDecreased || visit.romSame) {
+          doc.setFont('helvetica', 'bold');
+          doc.text('Range of Motions', margin + 10, yOffset);
+          yOffset += lineHeight;
+
+          doc.setFont('helvetica', 'normal');
+          if (visit.romWnlNoPain) doc.text('• WNL (No Pain)', margin + 15, yOffset);
+          if (visit.romWnlWithPain) doc.text('• WNL (With Pain)', margin + 15, yOffset);
+          if (visit.romImproved) doc.text('• Improved', margin + 15, yOffset);
+          if (visit.romDecreased) doc.text('• Decreased', margin + 15, yOffset);
+          if (visit.romSame) doc.text('• Same', margin + 15, yOffset);
+          yOffset += lineHeight;
+        }
+
+        // Assessment and Plan
+        doc.setFont('helvetica', 'bold');
+        doc.text('Assessment and Plan', margin, yOffset);
+        yOffset += lineHeight;
+
+        // Treatment Plans/Rationale
+        doc.setFont('helvetica', 'bold');
+        doc.text('Treatment Plans/Rationale', margin + 5, yOffset);
+        yOffset += lineHeight;
+
+        doc.setFont('helvetica', 'normal');
+        if (visit.chiropracticAdjustment) {
+          visit.chiropracticAdjustment.forEach(item => {
+            doc.text(`• ${item}`, margin + 10, yOffset);
+            yOffset += lineHeight;
+          });
+        }
+        if (visit.acupuncture) {
+          visit.acupuncture.forEach(item => {
+            doc.text(`• ${item}`, margin + 10, yOffset);
+            yOffset += lineHeight;
+          });
+        }
+        if (visit.physiotherapy) {
+          visit.physiotherapy.forEach(item => {
+            doc.text(`• ${item}`, margin + 10, yOffset);
+            yOffset += lineHeight;
+          });
+        }
+        yOffset += lineHeight;
+
+        // Schedule of Care
+        if (visit.scheduleOfCare) {
+          doc.setFont('helvetica', 'bold');
+          doc.text('Schedule of care:', margin + 10, yOffset);
+          yOffset += lineHeight;
+
+          doc.setFont('helvetica', 'normal');
+          doc.text(`• ${visit.scheduleOfCare}`, margin + 15, yOffset);
+          yOffset += lineHeight;
+        }
+
+        // Reevaluation
+        if (visit.reevaluation) {
+          doc.setFont('helvetica', 'bold');
+          doc.text('Reevaluation:', margin + 10, yOffset);
+          yOffset += lineHeight;
+
+          doc.setFont('helvetica', 'normal');
+          doc.text(visit.reevaluation, margin + 15, yOffset);
+          yOffset += lineHeight * 2;
+        }
+
+        // Return Frequency
+        if (visit.returnFrequency) {
+          doc.setFont('helvetica', 'bold');
+          doc.text('Return', margin + 10, yOffset);
+          yOffset += lineHeight;
+
+          doc.setFont('helvetica', 'normal');
+          doc.text(visit.returnFrequency, margin + 15, yOffset);
+          yOffset += lineHeight * 2;
+        }
+
+        // Referrals
+        if (visit.referral || (visit.referrals && Array.isArray(visit.referrals))) {
+          doc.setFont('helvetica', 'bold');
+          doc.text('Referral.', margin + 10, yOffset);
+          yOffset += lineHeight;
+
+          doc.setFont('helvetica', 'normal');
+          if (visit.referral) {
+            doc.text(`• ${visit.referral}`, margin + 15, yOffset);
+            yOffset += lineHeight;
+          }
+          if (visit.referrals && Array.isArray(visit.referrals)) {
+            visit.referrals.forEach(ref => {
+              doc.text(`• ${ref}`, margin + 15, yOffset);
+              yOffset += lineHeight;
+            });
+          }
+          yOffset += lineHeight;
+        }
+
+        // Restrictions
+        if (visit.restrictions) {
+          doc.setFont('helvetica', 'bold');
+          doc.text('Restrictions:', margin + 10, yOffset);
+          yOffset += lineHeight;
+
+          doc.setFont('helvetica', 'normal');
+          if (visit.restrictions.avoidActivityWeeks) {
+            doc.text(`• Avoid Activity: ${visit.restrictions.avoidActivityWeeks} week(s)`, margin + 15, yOffset);
+            yOffset += lineHeight;
+          }
+          if (visit.restrictions.liftingLimitLbs) {
+            doc.text(`• Lifting Limit: ${visit.restrictions.liftingLimitLbs} lbs`, margin + 15, yOffset);
+            yOffset += lineHeight;
+          }
+          if (visit.restrictions.avoidProlongedSitting) {
+            doc.text('• Avoid prolonged sitting/standing', margin + 15, yOffset);
+            yOffset += lineHeight;
+          }
+          yOffset += lineHeight;
+        }
+
+        // Final Exam specific sections
+        if (visit.visitType === 'discharge') {
+          // Prognosis
+          if (visit.prognosis) {
+            doc.setFont('helvetica', 'bold');
+            doc.text('Prognosis:', margin + 10, yOffset);
+            yOffset += lineHeight;
+
+            doc.setFont('helvetica', 'normal');
+            doc.text(visit.prognosis, margin + 15, yOffset);
+            yOffset += lineHeight * 2;
+          }
+
+          // Croft Criteria
+          if (visit.croftCriteria) {
+            doc.setFont('helvetica', 'bold');
+            doc.text('Frequency of Treatment Guideline Placement', margin + 5, yOffset);
+            yOffset += lineHeight;
+
+            doc.setFont('helvetica', 'normal');
+            const croftLines = doc.splitTextToSize(visit.croftCriteria, pageWidth - margin * 2);
+            croftLines.forEach((line: string) => {
+              doc.text(line, margin + 10, yOffset);
+              yOffset += lineHeight;
+            });
+            yOffset += lineHeight * 2;
+          }
+
+          // AMA Guidelines
+          if (visit.amaDisability) {
+            doc.setFont('helvetica', 'bold');
+            doc.text('AMA Guidelines 5th Edition for Impairment', margin + 5, yOffset);
+            yOffset += lineHeight;
+
+            doc.setFont('helvetica', 'normal');
+            const amaLines = doc.splitTextToSize(visit.amaDisability, pageWidth - margin * 2);
+            amaLines.forEach((line: string) => {
+              doc.text(line, margin + 10, yOffset);
+              yOffset += lineHeight;
+            });
+            yOffset += lineHeight * 2;
+          }
+
+          // Future Medical Care
+          if (visit.futureMedicalCare) {
+            doc.setFont('helvetica', 'bold');
+            doc.text('Miscellaneous Notes', margin + 5, yOffset);
+            yOffset += lineHeight;
+
+            doc.setFont('helvetica', 'bold');
+            doc.text('Future Medical Care', margin + 10, yOffset);
+            yOffset += lineHeight;
+
+            doc.setFont('helvetica', 'normal');
+            visit.futureMedicalCare.forEach(item => {
+              const lines = doc.splitTextToSize(item, pageWidth - margin * 2);
+              lines.forEach((line: string) => {
+                doc.text(line, margin + 15, yOffset);
+                yOffset += lineHeight;
+              });
+            });
+            yOffset += lineHeight * 2;
+          }
+
+          // Add provider signature for final visit
+          doc.setFont('helvetica', 'bold');
+          doc.text('Harold Iseke, D.C.', margin, yOffset);
+          yOffset += lineHeight;
+          doc.setFont('helvetica', 'normal');
+          doc.text('Treating Provider', margin, yOffset);
+          yOffset += lineHeight * 2;
+        }
+
+        // Add page break between visits
+        yOffset += lineHeight * 2;
+      });
+
+      // Save the PDF
+      doc.save(`${patient.firstName}_${patient.lastName}_Medical_Report.pdf`);
+    } catch (error) {
+      console.error('Error generating PDF report:', error);
+      alert('Error generating PDF report. Please try again.');
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-full">
@@ -318,15 +854,33 @@ setInvoiceCount(invoiceResponse.data.totalInvoices);
                 <Calendar className="mr-2 h-4 w-4" />
                 Schedule
               </Link>
-              <div className="relative inline-block text-left">
+              {visits.length > 0 ? (
+                <>
+                  <Link
+                    to={`/patients/${id}/visits/followup`}
+                    className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                  >
+                    <FileText className="mr-2 h-4 w-4" />
+                    New Follow-up
+                  </Link>
+                  {patient.status !== 'discharged' && (
+                    <Link
+                      to={`/patients/${id}/visits/discharge`}
+                      className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                    >
+                      Discharge
+                    </Link>
+                  )}
+                </>
+              ) : (
                 <Link
-                  to={visits.length > 0 ? `/patients/${id}/visits/followup` : `/patients/${id}/visits/initial`}
+                  to={`/patients/${id}/visits/initial`}
                   className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                 >
                   <FileText className="mr-2 h-4 w-4" />
-                  {visits.length > 0 ? 'New Follow-up' : 'Initial Visit'}
+                  Initial Visit
                 </Link>
-              </div>
+              )}
             </>
           )}
           <button
@@ -337,7 +891,7 @@ setInvoiceCount(invoiceResponse.data.totalInvoices);
             Print
           </button>
           <button
-            onClick={generatePDF}
+            onClick={generateFullReport}
             className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
           >
             <Download className="mr-2 h-4 w-4" />
@@ -703,6 +1257,13 @@ setInvoiceCount(invoiceResponse.data.totalInvoices);
                         <FileText className="mr-2 h-4 w-4" />
                         New Follow-up
                       </Link>
+                      <button
+                        onClick={generateFullReport}
+                        className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+                      >
+                        <FileArchive className="mr-2 h-4 w-4" />
+                        Full Report
+                      </button>
                       {patient.status !== 'discharged' && (
                         <Link
                           to={`/patients/${id}/visits/discharge`}
@@ -773,11 +1334,11 @@ setInvoiceCount(invoiceResponse.data.totalInvoices);
                           Dr. {visit.doctor.firstName} {visit.doctor.lastName}
                         </td>
                         <td className="px-6 py-4 text-sm text-gray-900 max-w-xs truncate">
-  {(visit.notes ||
-   visit.otherNotes ||
-   visit.referralsNotes ||
-   'No notes provided') as string}
-</td>
+                          {(visit.notes ||
+                           visit.otherNotes ||
+                           visit.referralsNotes ||
+                           'No notes provided') as string}
+                        </td>
 
 
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
@@ -829,7 +1390,18 @@ setInvoiceCount(invoiceResponse.data.totalInvoices);
 <li>{selectedVisit.reevaluation || 'Re-evaluation plan not specified.'}</li>
 <li>{selectedVisit.returnFrequency || 'Visit frequency not mentioned.'}</li>
 <li>{selectedVisit.referral || 'Referral notes not added.'}</li>
-<li>{selectedVisit.restrictions || 'No activity restrictions recorded.'}</li>
+{selectedVisit.restrictions ? (
+  <li>
+    <strong>Restrictions:</strong>
+    <ul>
+      {selectedVisit.restrictions.avoidActivityWeeks && <li>Avoid Activity: {selectedVisit.restrictions.avoidActivityWeeks} week(s)</li>}
+      {selectedVisit.restrictions.liftingLimitLbs && <li>Lifting Limit: {selectedVisit.restrictions.liftingLimitLbs} lbs</li>}
+      {selectedVisit.restrictions.avoidProlongedSitting && <li>Avoid prolonged sitting/standing</li>}
+    </ul>
+  </li>
+) : (
+  <li>No activity restrictions recorded.</li>
+)}
 
 
 
@@ -851,7 +1423,18 @@ setInvoiceCount(invoiceResponse.data.totalInvoices);
       <li>{selectedVisit.reevaluation || 'Re-evaluation plan not specified.'}</li>
       <li>{selectedVisit.returnFrequency || 'Visit frequency not mentioned.'}</li>
       <li>{selectedVisit.referral || 'Referral notes not added.'}</li>
-      <li>{selectedVisit.restrictions || 'No activity restrictions recorded.'}</li>
+      {selectedVisit.restrictions ? (
+        <li>
+          <strong>Restrictions:</strong>
+          <ul>
+            {selectedVisit.restrictions.avoidActivityWeeks && <li>Avoid Activity: {selectedVisit.restrictions.avoidActivityWeeks} week(s)</li>}
+            {selectedVisit.restrictions.liftingLimitLbs && <li>Lifting Limit: {selectedVisit.restrictions.liftingLimitLbs} lbs</li>}
+            {selectedVisit.restrictions.avoidProlongedSitting && <li>Avoid prolonged sitting/standing</li>}
+          </ul>
+        </li>
+      ) : (
+        <li>No activity restrictions recorded.</li>
+      )}
     </ul>
     <div className="mt-4">
       <button
