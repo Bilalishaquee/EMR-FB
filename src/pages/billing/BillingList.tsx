@@ -94,12 +94,19 @@ const BillingList: React.FC<BillingListProps> = ({
       }
       
       const response = await axios.get(url);
-      setInvoices(response.data.invoices);
+      const filteredInvoices = response.data.invoices.filter((invoice: Invoice) => {
+        if (!patientId) return true;
+        if (typeof invoice.patient === 'string') {
+          return invoice.patient === patientId;
+        }
+        return invoice.patient._id === patientId;
+      });
+      setInvoices(filteredInvoices);
       setTotalPages(response.data.totalPages);
       
       // ✅ Notify parent with invoice count
       if (onInvoiceCountChange) {
-        onInvoiceCountChange(response.data.invoices.length);
+        onInvoiceCountChange(filteredInvoices.length); // ✅ this will now send the correct count for the current page
       }
       
     } catch (error) {

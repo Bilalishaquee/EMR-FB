@@ -135,7 +135,7 @@ const PatientDetails: React.FC = () => {
   const [selectedVisit, setSelectedVisit] = useState<Visit | null>(null);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   // Using _ prefix to indicate this is intentionally unused
-  const [_invoices, setInvoices] = useState<Invoice[]>([]);
+  // const [_invoices, setInvoices] = useState<Invoice[]>([]);
   const [invoiceCount, setInvoiceCount] = useState(0);
 
   const [isLoading, setIsLoading] = useState(true);
@@ -171,7 +171,7 @@ const PatientDetails: React.FC = () => {
         setAppointments(appointmentsResponse.data);
         // ✅ Fetch invoice count for the patient
 const invoiceResponse = await axios.get(`http://localhost:5000/api/billing?patient=${id}`);
-setInvoiceCount(invoiceResponse.data.invoices.length);
+setInvoiceCount(invoiceResponse.data.totalInvoices);
 
         
         // We don't need to fetch invoices here anymore as BillingList will handle it
