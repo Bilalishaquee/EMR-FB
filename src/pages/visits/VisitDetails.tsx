@@ -57,56 +57,63 @@ restrictions?: {
 disabilityDuration?: string;
 otherNotes?: string;
 
-  
+  // Follow-up Visit fields (matching the EXAM FORM---REEVALUATION template)
+  areas?: string;
+  areasImproving?: boolean;
+  areasExacerbated?: boolean;
+  areasSame?: boolean;
+  musclePalpation?: string;
+  painRadiating?: string;
+  romWnlNoPain?: boolean;
+  romWnlWithPain?: boolean;
+  romImproved?: boolean;
+  romDecreased?: boolean;
+  romSame?: boolean;
+  orthos?: {
+    tests?: string;
+    result?: string;
+  };
+  activitiesCausePain?: string;
+  activitiesCausePainOther?: string;
+  treatmentPlan?: {
+    treatments?: string;
+    timesPerWeek?: string;
+  };
+  overallResponse?: {
+    improving?: boolean;
+    worse?: boolean;
+    same?: boolean;
+  };
+  diagnosticStudy?: {
+    study?: string;
+    bodyPart?: string;
+    result?: string;
+  };
+  homeCare?: string[];
 
-// Follow-up Visit fields (matching the EXAM FORM---REEVALUATION template)
-areas?: string;
-areasImproving?: boolean;
-areasExacerbated?: boolean;
-areasSame?: boolean;
-musclePalpation?: string;
-painRadiating?: string;
-romWnlNoPain?: boolean;
-romWnlWithPain?: boolean;
-romImproved?: boolean;
-romDecreased?: boolean;
-romSame?: boolean;
-orthos?: {
-  tests?: string;
-  result?: string;
-};
-activitiesCausePain?: string;
-activitiesCausePainOther?: string;
-treatmentPlan?: {
-  treatments?: string;
-  timesPerWeek?: string;
-};
-overallResponse?: {
-  improving?: boolean;
-  worse?: boolean;
-  same?: boolean;
-};
-referrals?: string;
-diagnosticStudy?: {
-  study?: string;
-  bodyPart?: string;
-  result?: string;
-};
-homeCare?: string;
-
-  
   // Discharge Visit fields
   treatmentSummary?: string;
   dischargeDiagnosis?: string[];
-  medicationsAtDischarge?: {
+  medicationsAtDischarge?: Array<{
     name: string;
     dosage: string;
     frequency: string;
     duration: string;
-  }[];
+  }>;
   followUpInstructions?: string;
   returnPrecautions?: string[];
   dischargeStatus?: string;
+  
+  // Add other missing properties that are used in the component
+  assessment?: string;
+  progressNotes?: string;
+  assessmentUpdate?: string;
+  romPercent?: string;
+  prognosis?: string;
+  futureMedicalCare?: string[];
+  croftCriteria?: string;
+  amaDisability?: string;
+  referralsNotes?: string;
 }
 
 const VisitDetails: React.FC = () => {
@@ -291,11 +298,11 @@ const VisitDetails: React.FC = () => {
     )}
 
     {/* Chiropractic Adjustment */}
-    {visit.chiropracticAdjustment?.length > 0 && (
+    {visit.chiropracticAdjustment && visit.chiropracticAdjustment.length > 0 && (
       <div>
         <h3 className="text-lg font-medium text-gray-900 mb-2">Chiropractic Adjustment</h3>
         <ul className="list-disc pl-5 text-gray-800">
-          {visit.chiropracticAdjustment.map((item, idx) => (
+          {visit.chiropracticAdjustment.map((item: string, idx: number) => (
             <li key={idx}>{item}</li>
           ))}
         </ul>
@@ -304,11 +311,11 @@ const VisitDetails: React.FC = () => {
     )}
 
     {/* Acupuncture */}
-    {visit.acupuncture?.length > 0 && (
+    {visit.acupuncture && visit.acupuncture.length > 0 && (
       <div>
         <h3 className="text-lg font-medium text-gray-900 mb-2">Acupuncture (Cupping)</h3>
         <ul className="list-disc pl-5 text-gray-800">
-          {visit.acupuncture.map((item, idx) => (
+          {visit.acupuncture.map((item: string, idx: number) => (
             <li key={idx}>{item}</li>
           ))}
         </ul>
@@ -317,11 +324,11 @@ const VisitDetails: React.FC = () => {
     )}
 
     {/* Physiotherapy */}
-    {visit.physiotherapy?.length > 0 && (
+    {visit.physiotherapy && visit.physiotherapy.length > 0 && (
       <div>
         <h3 className="text-lg font-medium text-gray-900 mb-2">Physiotherapy</h3>
         <ul className="list-disc pl-5 text-gray-800">
-          {visit.physiotherapy.map((item, idx) => (
+          {visit.physiotherapy.map((item: string, idx: number) => (
             <li key={idx}>{item}</li>
           ))}
         </ul>
@@ -329,11 +336,11 @@ const VisitDetails: React.FC = () => {
     )}
 
     {/* Rehabilitation Exercises */}
-    {visit.rehabilitationExercises?.length > 0 && (
+    {visit.rehabilitationExercises && visit.rehabilitationExercises.length > 0 && (
       <div>
         <h3 className="text-lg font-medium text-gray-900 mb-2">Rehabilitation Exercises</h3>
         <ul className="list-disc pl-5 text-gray-800">
-          {visit.rehabilitationExercises.map((item, idx) => (
+          {visit.rehabilitationExercises.map((item: string, idx: number) => (
             <li key={idx}>{item}</li>
           ))}
         </ul>
@@ -341,7 +348,7 @@ const VisitDetails: React.FC = () => {
     )}
 
     {/* Duration & Re-evaluation */}
-    {visit.durationFrequency && (
+    {(visit.durationFrequency?.timesPerWeek || visit.durationFrequency?.reEvalInWeeks) && (
       <div>
         <h3 className="text-lg font-medium text-gray-900 mb-2">Duration & Re-evaluation</h3>
         <p className="text-gray-800">
@@ -351,11 +358,11 @@ const VisitDetails: React.FC = () => {
     )}
 
     {/* Referrals */}
-    {visit.referrals?.length > 0 && (
+    {visit.referrals && visit.referrals.length > 0 && (
       <div>
         <h3 className="text-lg font-medium text-gray-900 mb-2">Referrals</h3>
         <ul className="list-disc pl-5 text-gray-800">
-          {visit.referrals.map((ref, idx) => (
+          {visit.referrals.map((ref: string, idx: number) => (
             <li key={idx}>{ref}</li>
           ))}
         </ul>
@@ -366,18 +373,23 @@ const VisitDetails: React.FC = () => {
     {visit.imaging && (
       <div>
         <h3 className="text-lg font-medium text-gray-900 mb-2">Imaging</h3>
-        {['xray', 'mri', 'ct'].map((modality) => (
-          visit.imaging[modality]?.length > 0 && (
-            <div key={modality}>
-              <p className="font-semibold capitalize">{modality}</p>
+        {Object.entries(visit.imaging).map(([modality, parts]) => {
+          const typedModality = modality as keyof typeof visit.imaging;
+          const typedParts = parts as string[] | undefined;
+          
+          if (!typedParts || typedParts.length === 0) return null;
+          
+          return (
+            <div key={typedModality}>
+              <p className="font-semibold capitalize">{typedModality}</p>
               <ul className="list-disc pl-5 text-gray-800">
-                {visit.imaging[modality].map((part, idx) => (
+                {typedParts.map((part: string, idx: number) => (
                   <li key={idx}>{part}</li>
                 ))}
               </ul>
             </div>
-          )
-        ))}
+          );
+        })}
       </div>
     )}
 
@@ -390,11 +402,11 @@ const VisitDetails: React.FC = () => {
     )}
 
     {/* Nerve Study */}
-    {visit.nerveStudy?.length > 0 && (
+    {visit.nerveStudy && visit.nerveStudy.length > 0 && (
       <div>
         <h3 className="text-lg font-medium text-gray-900 mb-2">Nerve Study</h3>
         <ul className="list-disc pl-5 text-gray-800">
-          {visit.nerveStudy.map((item, idx) => (
+          {visit.nerveStudy.map((item: string, idx: number) => (
             <li key={idx}>{item}</li>
           ))}
         </ul>

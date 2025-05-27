@@ -76,7 +76,7 @@ const PatientForm: React.FC = () => {
       surgeries: [''],
       familyHistory: ['']
     },
-    assignedDoctor: user?.role === 'doctor' ? (user.id || user._id) : '',
+    assignedDoctor: user?.role === 'doctor' ? (user._id) : '',
     status: 'active'
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -139,20 +139,29 @@ const PatientForm: React.FC = () => {
   }, [id, isEditMode, user?.role]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
+    const { name, value, type } = e.target as HTMLInputElement;
     
     // Handle nested objects
     if (name.includes('.')) {
       const [parent, child] = name.split('.');
+      setFormData(prev => {
+        const parentValue = prev[parent as keyof typeof prev];
+        if (typeof parentValue === 'object' && parentValue !== null) {
+          return {
+            ...prev,
+            [parent]: {
+              ...parentValue,
+              [child]: type === 'checkbox' ? (e.target as HTMLInputElement).checked : value
+            }
+          };
+        }
+        return prev;
+      });
+    } else {
       setFormData(prev => ({
         ...prev,
-        [parent]: {
-          ...prev[parent as keyof typeof prev],
-          [child]: value
-        }
+        [name]: type === 'checkbox' ? (e.target as HTMLInputElement).checked : value
       }));
-    } else {
-      setFormData(prev => ({ ...prev, [name]: value }));
     }
     
     // Clear error for this field

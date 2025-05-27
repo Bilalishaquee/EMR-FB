@@ -23,7 +23,7 @@ const InvoiceForm: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const location = useLocation();
-  const { user } = useAuth();
+  const { user: _user } = useAuth(); // Prefix with underscore to indicate it's intentionally unused
   const isEditMode = !!id;
   
   const [patients, setPatients] = useState<Patient[]>([]);
@@ -229,6 +229,7 @@ const InvoiceForm: React.FC = () => {
   dateIssued: formData.dateIssued.toISOString(),
   dueDate: formData.dueDate.toISOString(),
   visit: formData.visit || undefined, // 👈 ensures empty string is not sent
+  patient: formData.patient || undefined
 };
 
       

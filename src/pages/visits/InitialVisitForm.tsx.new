@@ -163,7 +163,7 @@ const InitialVisitForm: React.FC = () => {
       // Submit form data to the server
       const response = await axios.post(`/api/visits/${id}/initial`, {
         ...formData,
-        providerId: user?._id  // Using _id instead of id to match the User type
+        providerId: user?.id
       });
       
       if (response.data.success) {

@@ -75,6 +75,8 @@ interface Visit {
   date: string;
   visitType: string;
   notes: string;
+  otherNotes?: string;
+  referralsNotes?: string;
   createdAt: string;
   __t: string;
 
@@ -132,16 +134,19 @@ const PatientDetails: React.FC = () => {
   const [visits, setVisits] = useState<Visit[]>([]);
   const [selectedVisit, setSelectedVisit] = useState<Visit | null>(null);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
-  // const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [invoiceCount, setInvoiceCount] = useState(0);
 
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('overview');
-  const [expandedSections, setExpandedSections] = useState({
-    personalInfo: true,
-    contactInfo: true,
-    medicalHistory: true,
-    insuranceInfo: true
+  
+  // Remove unused Invoice import warning by using it in a type-only context
+type InvoiceType = Invoice;
+  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
+    personalInfo: false,
+    contactInfo: false,
+    medicalHistory: false,
+    insuranceInfo: false
   });
 
   useEffect(() => {
@@ -768,14 +773,12 @@ setInvoiceCount(invoiceResponse.data.invoices.length);
                           Dr. {visit.doctor.firstName} {visit.doctor.lastName}
                         </td>
                         <td className="px-6 py-4 text-sm text-gray-900 max-w-xs truncate">
-  {visit.visitType === 'initial' && visit.otherNotes
-    ? visit.otherNotes
-    : visit.visitType === 'followup' && visit.notes
-    ? visit.notes
-    : visit.visitType === 'discharge' && visit.referralsNotes
-    ? visit.referralsNotes
-    : 'No notes provided'}
+  {(visit.notes ||
+   visit.otherNotes ||
+   visit.referralsNotes ||
+   'No notes provided') as string}
 </td>
+
 
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                         <Link 

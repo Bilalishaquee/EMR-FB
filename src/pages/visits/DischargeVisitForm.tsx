@@ -2,10 +2,36 @@ import React, { useState } from 'react';
 import axios from 'axios';
 import { useParams, useNavigate } from 'react-router-dom';
 
-const DischargeVisitForm = () => {
-  const { id } = useParams();
+type FormData = {
+  areasImproving: boolean;
+  areasExacerbated: boolean;
+  areasSame: boolean;
+  musclePalpation: string;
+  painRadiating: string;
+  romPercent: string;
+  orthos: {
+    tests: string;
+    result: string;
+  };
+  activitiesCausePain: string;
+  otherNotes: string;
+  prognosis: string;
+  diagnosticStudy: {
+    study: string;
+    bodyPart: string;
+    result: string;
+  };
+  futureMedicalCare: string[];
+  croftCriteria: string;
+  amaDisability: string;
+  homeCare: string[];
+  referralsNotes: string;
+};
+
+const DischargeVisitForm: React.FC = () => {
+  const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<FormData>({
     areasImproving: false,
     areasExacerbated: false,
     areasSame: false,
@@ -31,30 +57,33 @@ const DischargeVisitForm = () => {
     referralsNotes: ''
   });
 
-  const handleChange = (e) => {
-    const { name, value, type, checked } = e.target;
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+    const { name, value, type } = e.target as HTMLInputElement;
     if (type === 'checkbox') {
+      const checked = (e.target as HTMLInputElement).checked;
       setFormData((prev) => ({ ...prev, [name]: checked }));
     } else {
       setFormData((prev) => ({ ...prev, [name]: value }));
     }
   };
 
-  const handleNestedChange = (section, field, value) => {
-    setFormData((prev) => ({
-      ...prev,
-      [section]: {
-        ...prev[section],
-        [field]: value
+  const handleNestedChange = (section: keyof FormData, field: string, value: string | boolean) => {
+    setFormData((prev) => {
+      const sectionValue = prev[section];
+      if (typeof sectionValue === 'object' && sectionValue !== null) {
+        return {
+          ...prev,
+          [section]: {
+            ...sectionValue,
+            [field]: value
+          }
+        };
       }
-    }));
+      return prev;
+    });
   };
 
-  const handleMultiSelect = (field, options) => {
-    setFormData((prev) => ({ ...prev, [field]: options }));
-  };
-
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
       await axios.post('http://localhost:5000/api/visits', {
