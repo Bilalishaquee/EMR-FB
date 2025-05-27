@@ -503,7 +503,7 @@ console.log('Using token:', token);
           </div>
 
           {/* Emergency Contact */}
-          <div>
+          {/* <div>
             <h2 className="text-lg font-medium text-gray-900 mb-4">Emergency Contact</h2>
             <div className="space-y-4">
               <div>
@@ -546,10 +546,10 @@ console.log('Using token:', token);
                 />
               </div>
             </div>
-          </div>
+          </div> */}
 
           {/* Insurance Information */}
-          <div>
+          {/* <div>
             <h2 className="text-lg font-medium text-gray-900 mb-4">Insurance Information</h2>
             <div className="space-y-4">
               <div>
@@ -605,7 +605,7 @@ console.log('Using token:', token);
                 />
               </div>
             </div>
-          </div>
+          </div> */}
 
           {/* Medical History */}
           <div className="md:col-span-2">
@@ -777,7 +777,7 @@ console.log('Using token:', token);
           <h2 className="text-2xl font-bold text-gray-800 mb-6">Subjective Intake</h2>
 
           {/* Full Name and Date */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+          {/* <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
             <input
               type="text"
               name="subjective.fullName"
@@ -793,7 +793,7 @@ console.log('Using token:', token);
               onChange={handleChange}
               className="w-full px-3 py-2 border border-gray-300 rounded-md"
             />
-          </div>
+          </div> */}
 
           {/* Body Part */}
           <div className="mb-6">
