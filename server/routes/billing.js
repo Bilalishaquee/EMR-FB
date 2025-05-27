@@ -98,20 +98,71 @@ router.get('/:id', async (req, res) => {
 // Create new invoice
 
 
+/**
+ * @route   POST /api/billing
+ * @desc    Create a new invoice
+ * @access  Private
+ * @param   {string} invoiceNumber - Unique invoice number
+ * @param   {string} patient - Patient ID
+ * @param   {Array} items - Invoice items
+ * @returns {Object} Created invoice or error message
+ */
 router.post('/', authenticateToken, async (req, res) => {
-
+  const startTime = new Date();
+  const requestId = `req_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+  
+  console.log(`[${startTime.toISOString()}] [${requestId}] Invoice creation started`, {
+    user: req.user.id,
+    invoiceNumber: req.body.invoiceNumber,
+    patient: req.body.patient
+  });
+  
   try {
     const invoiceData = req.body;
     
     // Check if patient exists
     const patient = await Patient.findById(invoiceData.patient);
     if (!patient) {
-      return res.status(404).json({ message: 'Patient not found' });
+      console.warn(`[${new Date().toISOString()}] [${requestId}] Patient not found`, {
+        patientId: invoiceData.patient,
+        user: req.user.id
+      });
+      return res.status(404).json({ 
+        success: false,
+        message: 'Patient not found',
+        error: 'PATIENT_NOT_FOUND'
+      });
     }
     
     // If user is a doctor, check if patient is assigned to them
     if (req.user.role === 'doctor' && patient.assignedDoctor.toString() !== req.user.id) {
-      return res.status(403).json({ message: 'Access denied: Patient not assigned to you' });
+      console.warn(`[${new Date().toISOString()}] [${requestId}] Unauthorized access attempt`, {
+        user: req.user.id,
+        patientId: patient._id,
+        assignedDoctor: patient.assignedDoctor
+      });
+      return res.status(403).json({ 
+        success: false,
+        message: 'Access denied: Patient not assigned to you',
+        error: 'UNAUTHORIZED_ACCESS'
+      });
+    }
+    
+    // Check for duplicate invoice number
+    const existingInvoice = await Billing.findOne({ invoiceNumber: invoiceData.invoiceNumber });
+    if (existingInvoice) {
+      console.warn(`[${new Date().toISOString()}] [${requestId}] Duplicate invoice number`, {
+        invoiceNumber: invoiceData.invoiceNumber,
+        existingInvoiceId: existingInvoice._id,
+        user: req.user.id
+      });
+      return res.status(409).json({ 
+        success: false,
+        message: `Invoice number '${invoiceData.invoiceNumber}' is already in use`,
+        error: 'DUPLICATE_INVOICE_NUMBER',
+        existingInvoiceId: existingInvoice._id,
+        field: 'invoiceNumber'
+      });
     }
     
     // Calculate totals
@@ -127,13 +178,96 @@ router.post('/', authenticateToken, async (req, res) => {
     const invoice = new Billing(invoiceData);
     await invoice.save();
     
+    const endTime = new Date();
+    const processingTime = endTime - startTime;
+    
+    console.log(`[${endTime.toISOString()}] [${requestId}] Invoice created successfully`, {
+      invoiceId: invoice._id,
+      invoiceNumber: invoice.invoiceNumber,
+      patient: invoice.patient,
+      total: invoice.total,
+      processingTime: `${processingTime}ms`,
+      user: req.user.id
+    });
+    
     res.status(201).json({
+      success: true,
       message: 'Invoice created successfully',
-      invoice
+      invoice,
+      requestId,
+      processingTime: `${processingTime}ms`
     });
   } catch (error) {
-    console.error('Create invoice error:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    const errorTime = new Date();
+    const processingTime = errorTime - startTime;
+    
+    // Log the full error for debugging
+    console.error(`[${errorTime.toISOString()}] [${requestId}] Create invoice error`, {
+      error: error.message,
+      stack: error.stack,
+      code: error.code,
+      keyPattern: error.keyPattern,
+      keyValue: error.keyValue,
+      processingTime: `${processingTime}ms`,
+      user: req.user?.id,
+      invoiceNumber: req.body.invoiceNumber
+    });
+    
+    // Handle duplicate key error (E11000)
+    if (error.code === 11000) {
+      const keyValue = error.keyValue?.invoiceNumber || 'unknown';
+      console.warn(`[${errorTime.toISOString()}] [${requestId}] Duplicate invoice number detected`, {
+        invoiceNumber: keyValue,
+        errorCode: error.code,
+        processingTime: `${processingTime}ms`
+      });
+      
+      // Try to find the conflicting invoice
+      try {
+        const existingInvoice = await Billing.findOne({ invoiceNumber: keyValue });
+        return res.status(409).json({
+          success: false,
+          message: `An invoice with number '${keyValue}' already exists`,
+          error: 'DUPLICATE_INVOICE_NUMBER',
+          field: 'invoiceNumber',
+          existingInvoiceId: existingInvoice?._id,
+          requestId,
+          processingTime: `${processingTime}ms`
+        });
+      } catch (lookupError) {
+        // If we can't find the existing invoice, return a generic error
+        console.error(`[${new Date().toISOString()}] [${requestId}] Error looking up duplicate invoice`, {
+          error: lookupError.message,
+          invoiceNumber: keyValue
+        });
+      }
+    }
+    
+    // Handle validation errors
+    if (error.name === 'ValidationError') {
+      const errors = {};
+      Object.keys(error.errors).forEach(key => {
+        errors[key] = error.errors[key].message;
+      });
+      
+      return res.status(400).json({
+        success: false,
+        message: 'Validation failed',
+        error: 'VALIDATION_ERROR',
+        errors,
+        requestId,
+        processingTime: `${processingTime}ms`
+      });
+    }
+    
+    // Handle other errors
+    res.status(500).json({ 
+      success: false,
+      message: 'An unexpected error occurred while creating the invoice',
+      error: process.env.NODE_ENV === 'production' ? 'INTERNAL_SERVER_ERROR' : error.message,
+      requestId,
+      processingTime: `${processingTime}ms`
+    });
   }
 });
 
