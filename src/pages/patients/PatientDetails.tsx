@@ -132,7 +132,9 @@ const PatientDetails: React.FC = () => {
   const [visits, setVisits] = useState<Visit[]>([]);
   const [selectedVisit, setSelectedVisit] = useState<Visit | null>(null);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
-  const [invoices, setInvoices] = useState<Invoice[]>([]);
+  // const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [invoiceCount, setInvoiceCount] = useState(0);
+
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('overview');
   const [expandedSections, setExpandedSections] = useState({
@@ -162,6 +164,10 @@ const PatientDetails: React.FC = () => {
         // Fetch patient appointments
         const appointmentsResponse = await axios.get(`http://localhost:5000/api/appointments?patient=${id}`);
         setAppointments(appointmentsResponse.data);
+        // ✅ Fetch invoice count for the patient
+const invoiceResponse = await axios.get(`http://localhost:5000/api/billing?patient=${id}`);
+setInvoiceCount(invoiceResponse.data.invoices.length);
+
         
         // We don't need to fetch invoices here anymore as BillingList will handle it
         setInvoices([]); // Clear the local invoices state
@@ -376,7 +382,8 @@ const PatientDetails: React.FC = () => {
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
               }`}
             >
-              Billing ({invoices.length})
+              Billing ({invoiceCount})
+
             </button>
           </nav>
         </div>
@@ -954,11 +961,13 @@ const PatientDetails: React.FC = () => {
               </Link>
             </div>
             <div className="p-4">
-              <BillingList 
-                patientId={id} 
-                showPatientColumn={false} 
-                showHeader={false} 
-              />
+            <BillingList 
+  patientId={id} 
+  showPatientColumn={false} 
+  showHeader={true} 
+  onInvoiceCountChange={setInvoiceCount} 
+/>
+
             </div>
           </div>
         )}

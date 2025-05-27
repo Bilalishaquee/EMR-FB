@@ -31,16 +31,20 @@ interface Invoice {
 }
 
 interface BillingListProps {
-  patientId?: string; // Optional patient ID to filter by
-  showPatientColumn?: boolean; // Whether to show the patient column (useful when showing all patients)
-  showHeader?: boolean; // Whether to show the page header and stats
+  patientId?: string;
+  showPatientColumn?: boolean;
+  showHeader?: boolean;
+  onInvoiceCountChange?: (count: number) => void; // ✅ NEW
 }
 
-const BillingList: React.FC<BillingListProps> = ({ 
-  patientId = '', 
+
+const BillingList: React.FC<BillingListProps> = ({
+  patientId = '',
   showPatientColumn = true,
-  showHeader = true 
+  showHeader = true,
+  onInvoiceCountChange // ✅ NEW
 }) => {
+
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -69,7 +73,8 @@ const BillingList: React.FC<BillingListProps> = ({
       
       // Always filter by patientId if provided
       if (patientId) {
-        url += `&patientId=${patientId}`;
+        // url += `&patientId=${patientId}`;
+        url += `&patient=${patientId}`;
       }
       
       if (searchTerm) {
@@ -91,6 +96,12 @@ const BillingList: React.FC<BillingListProps> = ({
       const response = await axios.get(url);
       setInvoices(response.data.invoices);
       setTotalPages(response.data.totalPages);
+      
+      // ✅ Notify parent with invoice count
+      if (onInvoiceCountChange) {
+        onInvoiceCountChange(response.data.invoices.length);
+      }
+      
     } catch (error) {
       console.error('Error fetching invoices:', error);
     } finally {
@@ -168,7 +179,8 @@ const BillingList: React.FC<BillingListProps> = ({
 
   return (
     <div className="container mx-auto px-4">
-      {showHeader && (
+      {showHeader && !patientId && (
+
         <>
           <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
             <h1 className="text-2xl font-semibold text-gray-800 mb-4 md:mb-0">
@@ -184,6 +196,7 @@ const BillingList: React.FC<BillingListProps> = ({
           </div>
           
           {/* Billing Stats */}
+          {!patientId && (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
             <div className="bg-white p-4 rounded-lg shadow border-l-4 border-blue-500">
               <div className="flex items-center">
@@ -219,6 +232,7 @@ const BillingList: React.FC<BillingListProps> = ({
               </div>
             </div>
           </div>
+            )}
         </>
       )}
 
@@ -375,13 +389,13 @@ const BillingList: React.FC<BillingListProps> = ({
                               {invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1)}
                             </span>
                           </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
+                        {/* <td className="px-6 py-4 whitespace-nowrap">
                           <span
                             className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(invoice.status)}`}
                           >
                             {invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1)}
                           </span>
-                        </td>
+                        </td> */}
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                           <div className="flex space-x-2">
                             <Link

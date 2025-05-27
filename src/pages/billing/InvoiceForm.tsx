@@ -238,7 +238,8 @@ const InvoiceForm: React.FC = () => {
         await axios.post('http://localhost:5000/api/billing', invoiceData);
       }
       
-      navigate('/billing');
+      navigate(`/patients/${formData.patient}`);
+
     } catch (error) {
       console.error('Error saving invoice:', error);
     } finally {
