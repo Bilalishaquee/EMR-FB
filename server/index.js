@@ -1,6 +1,6 @@
 import dotenv from 'dotenv';
 dotenv.config();
-
+import reportsRoutes from './routes/reports.js';
 console.log('Loaded MONGODB_URI:', process.env.MONGODB_URI);
 
 
@@ -47,7 +47,7 @@ mongoose.connect(process.env.MONGODB_URI)
       res.status(200).json({ status: 'Server is running' });
     });
 
-
+    app.use('/api/reports', reportsRoutes);
     app.use('/api/visits', authenticateToken, visitRoutes);
     // Error handler
     app.use((err, req, res, next) => {

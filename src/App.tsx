@@ -4,6 +4,8 @@ import { AuthProvider } from './contexts/AuthContext';
 import PrivateRoute from './components/PrivateRoute';
 import AdminRoute from './components/AdminRoute';
 import DoctorRoute from './components/DoctorRoute';
+import { ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 // Auth Pages
 import Login from './pages/auth/Login';
@@ -79,6 +81,7 @@ function App() {
           {/* Catch-all route */}
           <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
+        <ToastContainer position="top-right" autoClose={3000} />
       </Router>
     </AuthProvider>
   );

@@ -62,11 +62,15 @@ const BillingList: React.FC<BillingListProps> = ({
   });
 
   useEffect(() => {
-    fetchInvoices();
-    fetchBillingSummary();
-  }, [currentPage, statusFilter, dateRange]);
+    if (patientId) {
+      fetchInvoices();
+      fetchBillingSummary();
+    }
+  }, [patientId, currentPage, statusFilter, dateRange]);
+  
 
   const fetchInvoices = async () => {
+    if (!patientId) return; // prevent bad request if missing
     setIsLoading(true);
     try {
       let url = `http://localhost:5000/api/billing?page=${currentPage}`;

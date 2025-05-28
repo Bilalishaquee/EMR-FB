@@ -5,7 +5,8 @@ import { authenticateToken } from '../middleware/authMiddleware.js'; // make sur
 const router = express.Router();
 
 // Get all invoices (with filtering)
-router.get('/', async (req, res) => {
+router.get('/', authenticateToken, async (req, res) => {
+
   try {
     const { 
       status, 
@@ -69,8 +70,32 @@ router.get('/', async (req, res) => {
   }
 });
 
+// ✅ Get total invoice count for a patient
+router.get('/count/:patientId', authenticateToken, async (req, res) => {
+  try {
+    const patient = await Patient.findById(req.params.patientId);
+
+    if (!patient) {
+      return res.status(404).json({ message: 'Patient not found' });
+    }
+
+    // ✅ Access control: only admin or assigned doctor
+    if (req.user.role === 'doctor' && patient.assignedDoctor.toString() !== req.user.id) {
+      return res.status(403).json({ message: 'Access denied' });
+    }
+
+    const count = await Billing.countDocuments({ patient: req.params.patientId });
+    res.json({ totalInvoices: count });
+  } catch (error) {
+    console.error('Error fetching invoice count:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+
 // Get invoice by ID
-router.get('/:id', async (req, res) => {
+router.get('/:id', authenticateToken, async (req, res) => {
+
   try {
     const invoice = await Billing.findById(req.params.id)
       .populate('patient', 'firstName lastName dateOfBirth gender phone email address')
@@ -87,6 +112,7 @@ router.get('/:id', async (req, res) => {
         return res.status(403).json({ message: 'Access denied' });
       }
     }
+    
     
     res.json(invoice);
   } catch (error) {
@@ -337,6 +363,7 @@ router.post('/:id/payments', async (req, res) => {
       }
     }
     
+  
     const { amount, method, reference, notes } = req.body;
     
     // Add payment to history
