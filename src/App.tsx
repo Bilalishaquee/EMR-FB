@@ -5,6 +5,7 @@ import AdminRoute from './components/AdminRoute';
 import DoctorRoute from './components/DoctorRoute';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 // Auth Pages
 import Login from './pages/auth/Login';
@@ -39,56 +40,61 @@ import UnsettledCaseReport from './pages/reports/UnsettledCaseReport';
 // Layout Components
 import MainLayout from './components/layouts/MainLayout';
 
+// ✅ Initialize the QueryClient
+const queryClient = new QueryClient();
+
 function App() {
   return (
-    <AuthProvider>
-      <Router>
-        <Routes>
-          {/* Auth Routes */}
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
-          
-          {/* Protected Routes */}
-          <Route path="/" element={<PrivateRoute><MainLayout /></PrivateRoute>}>
-            <Route index element={<Navigate to="/dashboard" replace />} />
-            <Route path="dashboard" element={<Dashboard />} />
-            
-            {/* Patient Routes */}
-            <Route path="patients" element={<PatientList />} />
-            <Route path="patients/new" element={<PatientForm />} />
-            <Route path="patients/:id" element={<PatientDetails />} />
-            <Route path="patients/:id/edit" element={<PatientForm />} />
-            
-            {/* Visit Routes */}
-            <Route path="patients/:id/visits/initial" element={<DoctorRoute><InitialVisitForm /></DoctorRoute>} />
-            <Route path="patients/:id/visits/followup" element={<DoctorRoute><FollowupVisitForm /></DoctorRoute>} />
-            <Route path="patients/:id/visits/discharge" element={<DoctorRoute><DischargeVisitForm /></DoctorRoute>} />
-            <Route path="visits/:id" element={<VisitDetails />} />
-            
-            {/* Appointment Routes */}
-            <Route path="appointments" element={<AppointmentCalendar />} />
-            <Route path="appointments/new" element={<AppointmentForm />} />
-            <Route path="appointments/:id/edit" element={<AppointmentForm />} />
-            
-            {/* Billing Routes */}
-            <Route path="billing" element={<BillingList />} />
-            <Route path="billing/new" element={<InvoiceForm />} />
-            <Route path="billing/:id" element={<InvoiceDetails />} />
-            <Route path="billing/:id/edit" element={<InvoiceForm />} />
-            
-            {/* Report Routes */}
-            <Route path="reports/unsettled-cases" element={<UnsettledCaseReport />} />
-            
-            {/* Admin Routes */}
-            <Route path="admin/*" element={<AdminRoute><div>Admin Panel</div></AdminRoute>} />
-          </Route>
-          
-          {/* Catch-all route */}
-          <Route path="*" element={<Navigate to="/login" replace />} />
-        </Routes>
-        <ToastContainer position="top-right" autoClose={3000} />
-      </Router>
-    </AuthProvider>
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
+        <Router>
+          <Routes>
+            {/* Auth Routes */}
+            <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
+
+            {/* Protected Routes */}
+            <Route path="/" element={<PrivateRoute><MainLayout /></PrivateRoute>}>
+              <Route index element={<Navigate to="/dashboard" replace />} />
+              <Route path="dashboard" element={<Dashboard />} />
+
+              {/* Patient Routes */}
+              <Route path="patients" element={<PatientList />} />
+              <Route path="patients/new" element={<PatientForm />} />
+              <Route path="patients/:id" element={<PatientDetails />} />
+              <Route path="patients/:id/edit" element={<PatientForm />} />
+
+              {/* Visit Routes */}
+              <Route path="patients/:id/visits/initial" element={<DoctorRoute><InitialVisitForm /></DoctorRoute>} />
+              <Route path="patients/:id/visits/followup" element={<DoctorRoute><FollowupVisitForm /></DoctorRoute>} />
+              <Route path="patients/:id/visits/discharge" element={<DoctorRoute><DischargeVisitForm /></DoctorRoute>} />
+              <Route path="visits/:id" element={<VisitDetails />} />
+
+              {/* Appointment Routes */}
+              <Route path="appointments" element={<AppointmentCalendar />} />
+              <Route path="appointments/new" element={<AppointmentForm />} />
+              <Route path="appointments/:id/edit" element={<AppointmentForm />} />
+
+              {/* Billing Routes */}
+              <Route path="billing" element={<BillingList />} />
+              <Route path="billing/new" element={<InvoiceForm />} />
+              <Route path="billing/:id" element={<InvoiceDetails />} />
+              <Route path="billing/:id/edit" element={<InvoiceForm />} />
+
+              {/* Report Routes */}
+              <Route path="reports/unsettled-cases" element={<UnsettledCaseReport />} />
+
+              {/* Admin Routes */}
+              <Route path="admin/*" element={<AdminRoute><div>Admin Panel</div></AdminRoute>} />
+            </Route>
+
+            {/* Catch-all route */}
+            <Route path="*" element={<Navigate to="/login" replace />} />
+          </Routes>
+          <ToastContainer position="top-right" autoClose={3000} />
+        </Router>
+      </AuthProvider>
+    </QueryClientProvider>
   );
 }
 

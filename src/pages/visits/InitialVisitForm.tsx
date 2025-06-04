@@ -3,6 +3,10 @@ import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { Save, ArrowLeft } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
+import Modal from 'react-modal';
+import { useQuery } from '@tanstack/react-query'; // if you're using react-query
+
+
 
 // Define the interface for the form data
 interface InitialVisitFormData {
@@ -38,6 +42,21 @@ const InitialVisitForm: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
+
+  Modal.setAppElement('#root');
+const [modalIsOpen, setModalIsOpen] = useState(false);
+
+const { data: patientData, isLoading } = useQuery({
+  queryKey: ['patientData', id],
+  queryFn: async () => {
+    const res = await axios.get(`http://localhost:5000/api/patients/${id}`);
+    console.log("Patient API Response:", res.data);
+    if (!res.data) throw new Error("No patient data returned");
+    return res.data; // ✅ Fix: directly return res.data (not res.data.patient)
+  },
+  enabled: !!id,
+});
+
 
   const [isSaving, setIsSaving] = useState(false);
   const [autoSaveStatus, setAutoSaveStatus] = useState('');
@@ -204,16 +223,16 @@ const InitialVisitForm: React.FC = () => {
         {/* FORM UI WILL BE ADDED HERE */}
         <div>
           
-        <label className="block text-base font-bold text-gray-900 mb-2">Chief Complaint *</label>
+        <div className="mt-4">
+  <button
+    type="button"
+    onClick={() => setModalIsOpen(true)}
+    className="bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700"
+  >
+    View Chief Complaint
+  </button>
+</div>
 
-  <input
-    type="text"
-    name="chiefComplaint"
-    value={formData.chiefComplaint}
-    onChange={handleInputChange}
-    className="w-full px-3 py-2 border rounded"
-    required
-  />
 </div>
 
 {/* Chiropractic Adjustment */}
@@ -410,6 +429,65 @@ const InitialVisitForm: React.FC = () => {
       </form>
       </div>  
       </div>
+
+      <Modal
+  isOpen={modalIsOpen}
+  onRequestClose={() => setModalIsOpen(false)}
+  contentLabel="Chief Complaint Modal"
+  className="bg-white rounded-lg shadow-lg max-w-lg mx-auto mt-20 p-6"
+  overlayClassName="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-start z-50"
+>
+  <h2 className="text-xl font-bold mb-4 text-gray-800">Chief Complaint Info</h2>
+
+  {isLoading ? (
+    <p className="text-gray-500">Loading...</p>
+  ) : patientData?.subjective &&
+    Object.entries(patientData.subjective).some(([_, val]) =>
+      val !== null &&
+      val !== undefined &&
+      val !== '' &&
+      !(Array.isArray(val) && val.length === 0) &&
+      !(typeof val === 'boolean' && val === false) &&
+      !(typeof val === 'object' && !Array.isArray(val) && Object.keys(val).length === 0)
+    ) ? (
+    <div className="text-sm text-gray-700 space-y-2">
+      <p>
+        <strong>Body Part(s):</strong>{' '}
+        {Array.isArray(patientData.subjective.bodyPart)
+          ? patientData.subjective.bodyPart.map(bp => `${bp.part} (${bp.side})`).join(', ')
+          : 'N/A'}
+      </p>
+      <p><strong>Severity:</strong> {patientData.subjective.severity ?? 'N/A'}</p>
+      <p><strong>Timing:</strong> {patientData.subjective.timing || 'N/A'}</p>
+      <p><strong>Context:</strong> {patientData.subjective.context || 'N/A'}</p>
+      <p><strong>Quality:</strong> {patientData.subjective.quality?.join(', ') || 'N/A'}</p>
+      <p><strong>Exacerbated By:</strong> {patientData.subjective.exacerbatedBy?.join(', ') || 'N/A'}</p>
+      <p><strong>Symptoms:</strong> {patientData.subjective.symptoms?.join(', ') || 'N/A'}</p>
+      <p><strong>Radiating To:</strong> {patientData.subjective.radiatingTo || 'N/A'}</p>
+      <p><strong>Radiating Pain:</strong> {(patientData.subjective.radiatingLeft || patientData.subjective.radiatingRight)
+        ? [patientData.subjective.radiatingLeft && 'Left', patientData.subjective.radiatingRight && 'Right'].filter(Boolean).join(', ')
+        : 'None'}
+      </p>
+      <p><strong>Sciatica:</strong> {[patientData.subjective.sciaticaLeft && 'Left', patientData.subjective.sciaticaRight && 'Right'].filter(Boolean).join(', ') || 'None'}</p>
+      <p><strong>Notes:</strong> {patientData.subjective.notes || 'N/A'}</p>
+    </div>
+  ) : (
+    <p className="text-gray-500">No subjective data found.</p>
+  )}
+
+  <div className="mt-4 flex justify-end">
+    <button
+      onClick={() => setModalIsOpen(false)}
+      className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600"
+    >
+      Close
+    </button>
+  </div>
+</Modal>
+
+
+
+
     </div>
   );
 };
