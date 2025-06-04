@@ -17,8 +17,10 @@ interface Attorney {
   firm: string;
   phone: string;
   email: string;
+  caseNumber?: string; // ✅ Add this line
   address: Omit<Address, 'country'>;
 }
+
 
 interface Patient {
   _id?: string;
@@ -38,17 +40,6 @@ interface Patient {
   assignedDoctor: string;
   attorney?: Attorney;
   address: Address;
-  emergencyContact: {
-    name: string;
-    relationship: string;
-    phone: string;
-  };
-  insuranceInfo: {
-    provider: string;
-    policyNumber: string;
-    groupNumber: string;
-    primaryInsured: string;
-  };
   medicalHistory: {
     allergies: string[];
     medications: string[];
@@ -64,7 +55,7 @@ interface Patient {
     cognitive: string[];
     digestive: string[];
     emotional: string[];
-    bodyPart: string[];
+    bodyPart: { part: string; side: string }[];
     severity: string;
     quality: string[];
     timing: string;
@@ -77,6 +68,8 @@ interface Patient {
     radiatingLeft: boolean;
     sciaticaRight: boolean;
     sciaticaLeft: boolean;
+    tempBodyPart?: string;
+    tempSide?: string;
   };
 }
 
@@ -115,16 +108,16 @@ const PatientForm: React.FC = () => {
     const updated = [...bodyParts];
     updated[index] = { ...updated[index], [field]: value };
     setBodyParts(updated);
-    
-    // Update formData with the latest body parts
+  
     setFormData(prev => ({
       ...prev,
       subjective: {
         ...prev.subjective,
-        bodyPart: updated.map(bp => `${bp.part}${bp.side ? ` (${bp.side})` : ''}`).filter(Boolean)
+        bodyPart: updated // ✅ No mapping to string
       }
     }));
   };
+  
 
   // Define valid status values based on server enum
   const validStatuses = ['active', 'inactive', 'pending', 'discharged'] as const;
@@ -144,17 +137,6 @@ const PatientForm: React.FC = () => {
       state: '',
       zipCode: '',
       country: 'USA'
-    },
-    emergencyContact: {
-      name: '',
-      relationship: '',
-      phone: ''
-    },
-    insuranceInfo: {
-      provider: '',
-      policyNumber: '',
-      groupNumber: '',
-      primaryInsured: ''
     },
     medicalHistory: {
       allergies: [''],
@@ -204,45 +186,58 @@ const PatientForm: React.FC = () => {
     const fetchData = async () => {
       setIsLoading(true);
       try {
-        // If in edit mode, fetch patient data
-       if (isEditMode) {
-  const patientResponse = await axios.get(`http://localhost:5000/api/patients/${id}`);
-  const patientData = patientResponse.data;
-
-  if (patientData.dateOfBirth) {
-    patientData.dateOfBirth = new Date(patientData.dateOfBirth).toISOString().split('T')[0];
-  }
-
-  // ✅ Ensure subjective exists to avoid crashing on older patients
-  if (!patientData.subjective) {
-    patientData.subjective = {
-      fullName: '',
-      date: '',
-      physical: [],
-      sleep: [],
-      cognitive: [],
-      digestive: [],
-      emotional: [],
-      bodyPart: [],
-      severity: '',
-      quality: [],
-      timing: '',
-      context: '',
-      exacerbatedBy: [],
-      symptoms: [],
-      notes: '',
-      radiatingTo: '',
-      radiatingRight: false,
-      radiatingLeft: false,
-      sciaticaRight: false,
-      sciaticaLeft: false
-    };
-  }
-
-  setFormData(patientData);
-}
- 
-        // If user is admin, fetch doctors for dropdown
+        if (isEditMode) {
+          // 🔄 Fetch existing patient data
+          const patientResponse = await axios.get(`http://localhost:5000/api/patients/${id}`);
+          const patientData = patientResponse.data;
+  
+          if (patientData.dateOfBirth) {
+            patientData.dateOfBirth = new Date(patientData.dateOfBirth).toISOString().split('T')[0];
+          }
+  
+          // ✅ Ensure subjective structure
+          if (!patientData.subjective) {
+            patientData.subjective = {
+              fullName: '',
+              date: '',
+              physical: [],
+              sleep: [],
+              cognitive: [],
+              digestive: [],
+              emotional: [],
+              bodyPart: [],
+              severity: '',
+              quality: [],
+              timing: '',
+              context: '',
+              exacerbatedBy: [],
+              symptoms: [],
+              notes: '',
+              radiatingTo: '',
+              radiatingRight: false,
+              radiatingLeft: false,
+              sciaticaRight: false,
+              sciaticaLeft: false
+            };
+          }
+  
+          setFormData(patientData);
+        } else {
+          // ➕ Auto-generate caseNumber in create mode using localStorage
+          const lastCase = localStorage.getItem("lastCaseNumber") || "1000";
+          const newCaseNumber = parseInt(lastCase) + 1;
+          localStorage.setItem("lastCaseNumber", newCaseNumber.toString());
+  
+          setFormData(prev => ({
+            ...prev,
+            attorney: {
+              ...prev.attorney,
+              caseNumber: `CASE-${newCaseNumber}`
+            }
+          }));
+        }
+  
+        // 👨‍⚕️ Fetch doctor list if user is admin
         if (user?.role === 'admin') {
           const doctorsResponse = await axios.get('http://localhost:5000/api/auth/doctors');
           setDoctors(doctorsResponse.data);
@@ -253,9 +248,10 @@ const PatientForm: React.FC = () => {
         setIsLoading(false);
       }
     };
-    
+  
     fetchData();
   }, [id, isEditMode, user?.role]);
+  
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value, type } = e.target as HTMLInputElement;
@@ -363,20 +359,26 @@ const PatientForm: React.FC = () => {
     if (cleanedData.subjective) {
       cleanedData.subjective = {
         ...cleanedData.subjective,
-        bodyPart: Array.isArray(cleanedData.subjective.bodyPart) 
-          ? cleanedData.subjective.bodyPart.filter(part => part && part.trim() !== '')
-          : []
+        bodyPart: Array.isArray(cleanedData.subjective.bodyPart)
+  ? cleanedData.subjective.bodyPart.filter(
+      (bp: { part: string; side: string }) =>
+        bp.part && bp.side && bp.part.trim() !== '' && bp.side.trim() !== ''
+    )
+  : []
+
       };
     }
     
     // Clean attorney info
     if (cleanedData.attorney) {
-      const hasAttorneyInfo = (
-        cleanedData.attorney.name?.trim() ||
-        cleanedData.attorney.firm?.trim() ||
-        cleanedData.attorney.phone?.trim() ||
-        cleanedData.attorney.email?.trim()
-      );
+      const hasAttorneyInfo = [
+        cleanedData.attorney.name,
+        cleanedData.attorney.firm,
+        cleanedData.attorney.phone,
+        cleanedData.attorney.email,
+        cleanedData.attorney.caseNumber
+      ].some((val) => val && val.trim() !== '');
+      
       
       if (!hasAttorneyInfo) {
         delete cleanedData.attorney;
@@ -439,8 +441,6 @@ const PatientForm: React.FC = () => {
       
       // Ensure required nested objects exist
       if (!patientData.address) patientData.address = {} as Address;
-      if (!patientData.emergencyContact) patientData.emergencyContact = { name: '', relationship: '', phone: '' };
-      if (!patientData.insuranceInfo) patientData.insuranceInfo = { provider: '', policyNumber: '', groupNumber: '', primaryInsured: '' };
       if (!patientData.medicalHistory) patientData.medicalHistory = { allergies: [], medications: [], conditions: [], surgeries: [], familyHistory: [] };
       if (!patientData.subjective) patientData.subjective = {
         fullName: '',
@@ -907,7 +907,20 @@ const PatientForm: React.FC = () => {
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                 />
               </div>
-              <div className="md:col-span-2">
+              <div>
+  <label htmlFor="attorney.caseNumber" className="block text-sm font-medium text-gray-700 mb-1">
+    Case Number
+  </label>
+  <input
+    type="text"
+    id="attorney.caseNumber"
+    name="attorney.caseNumber"
+    value={formData.attorney?.caseNumber || ''}
+    onChange={handleChange}
+    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+  />
+</div>
+                <div className="md:col-span-2">
                 <label htmlFor="attorney.address.street" className="block text-sm font-medium text-gray-700 mb-1">
                   Address
                 </label>
@@ -963,111 +976,7 @@ const PatientForm: React.FC = () => {
             </div>
           </div>
 
-          {/* Emergency Contact */}
-          {/* <div>
-            <h2 className="text-lg font-medium text-gray-900 mb-4">Emergency Contact</h2>
-            <div className="space-y-4">
-              <div>
-                <label htmlFor="emergencyContact.name" className="block text-sm font-medium text-gray-700 mb-1">
-                  Name
-                </label>
-                <input
-                  type="text"
-                  id="emergencyContact.name"
-                  name="emergencyContact.name"
-                  value={formData.emergencyContact.name}
-                  onChange={handleChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                />
-              </div>
-              <div>
-                <label htmlFor="emergencyContact.relationship" className="block text-sm font-medium text-gray-700 mb-1">
-                  Relationship
-                </label>
-                <input
-                  type="text"
-                  id="emergencyContact.relationship"
-                  name="emergencyContact.relationship"
-                  value={formData.emergencyContact.relationship}
-                  onChange={handleChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                />
-              </div>
-              <div>
-                <label htmlFor="emergencyContact.phone" className="block text-sm font-medium text-gray-700 mb-1">
-                  Phone
-                </label>
-                <input
-                  type="tel"
-                  id="emergencyContact.phone"
-                  name="emergencyContact.phone"
-                  value={formData.emergencyContact.phone}
-                  onChange={handleChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                />
-              </div>
-            </div>
-          </div> */}
-
-          {/* Insurance Information */}
-          {/* <div>
-            <h2 className="text-lg font-medium text-gray-900 mb-4">Insurance Information</h2>
-            <div className="space-y-4">
-              <div>
-                <label htmlFor="insuranceInfo.provider" className="block text-sm font-medium text-gray-700 mb-1">
-                  Provider
-                </label>
-                <input
-                  type="text"
-                  id="insuranceInfo.provider"
-                  name="insuranceInfo.provider"
-                  value={formData.insuranceInfo.provider}
-                  onChange={handleChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                />
-              </div>
-              <div>
-                <label htmlFor="insuranceInfo.policyNumber" className="block text-sm font-medium text-gray-700 mb-1">
-                  Policy Number
-                </label>
-                <input
-                  type="text"
-                  id="insuranceInfo.policyNumber"
-                  name="insuranceInfo.policyNumber"
-                  value={formData.insuranceInfo.policyNumber}
-                  onChange={handleChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                />
-              </div>
-              <div>
-                <label htmlFor="insuranceInfo.groupNumber" className="block text-sm font-medium text-gray-700 mb-1">
-                  Group Number
-                </label>
-                <input
-                  type="text"
-                  id="insuranceInfo.groupNumber"
-                  name="insuranceInfo.groupNumber"
-                  value={formData.insuranceInfo.groupNumber}
-                  onChange={handleChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                />
-              </div>
-              <div>
-                <label htmlFor="insuranceInfo.primaryInsured" className="block text-sm font-medium text-gray-700 mb-1">
-                  Primary Insured
-                </label>
-                <input
-                  type="text"
-                  id="insuranceInfo.primaryInsured"
-                  name="insuranceInfo.primaryInsured"
-                  value={formData.insuranceInfo.primaryInsured}
-                  onChange={handleChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                />
-              </div>
-            </div>
-          </div> */}
-
+         
           {/* Medical History */}
           <div className="md:col-span-2">
             <h2 className="text-lg font-medium text-gray-900 mb-4">Medical History</h2>
@@ -1234,158 +1143,361 @@ const PatientForm: React.FC = () => {
           </div>
         </div>
 {/* SUBJECTIVE INTAKE SECTION */}
-        <div className="mt-12 border-t pt-6">
-          <h2 className="text-2xl font-bold text-gray-800 mb-6">Subjective Intake</h2>
+<div className="mt-12 border-t pt-6">
+  <h2 className="text-2xl font-bold text-gray-800 mb-6">Subjective Intake</h2>
 
-          {/* Full Name and Date */}
-          {/* <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-            <input
-              type="text"
-              name="subjective.fullName"
-              value={formData.subjective.fullName}
-              onChange={handleChange}
-              placeholder="Full Name"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md"
-            />
-            <input
-              type="date"
-              name="subjective.date"
-              value={formData.subjective.date}
-              onChange={handleChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md"
-            />
-          </div> */}
+  {/* Affected Areas (Body Parts Dropdown + Side Dropdown + Add Button) */}
+<div className="mb-6">
+  <h3 className="text-lg font-semibold text-gray-800 mb-2">Affected Areas</h3>
 
-          {/* Body Part */}
-          <div className="mb-6">
-            <div className="flex justify-between items-center mb-2">
-              <h3 className="text-lg font-semibold text-gray-800">Affected Body Parts</h3>
-              <button
-                type="button"
-                onClick={handleAddBodyPart}
-                className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-              >
-                + Add Body Part
-              </button>
-            </div>
-            
-            <div className="space-y-3">
-              {bodyParts.map((bodyPart, index) => (
-                <div key={index} className="flex items-start space-x-2">
-                  <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-2">
-                    <div>
-                      <select
-                        value={bodyPart.part}
-                        onChange={(e) => handleBodyPartChange(index, 'part', e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                      >
-                        <option value="">Select body part</option>
-                        <option value="C/S">Cervical Spine (C/S)</option>
-                        <option value="T/S">Thoracic Spine (T/S)</option>
-                        <option value="L/S">Lumbar Spine (L/S)</option>
-                        <option value="SH">Shoulder (SH)</option>
-                        <option value="ELB">Elbow (ELB)</option>
-                        <option value="WR">Wrist (WR)</option>
-                        <option value="Hand">Hand</option>
-                        <option value="Finger(s)">Finger(s)</option>
-                        <option value="Hip">Hip</option>
-                        <option value="KN">Knee (KN)</option>
-                        <option value="AN">Ankle (AN)</option>
-                        <option value="Foot">Foot</option>
-                        <option value="Toe(s)">Toe(s)</option>
-                        <option value="Head">Head</option>
-                        <option value="Other">Other (specify)</option>
-                      </select>
-                      {bodyPart.part === 'Other' && (
-                        <input
-                          type="text"
-                          placeholder="Please specify"
-                          className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                          onChange={(e) => handleBodyPartChange(index, 'part', e.target.value)}
-                        />
-                      )}
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <select
-                        value={bodyPart.side}
-                        onChange={(e) => handleBodyPartChange(index, 'side', e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                      >
-                        <option value="">Select side</option>
-                        <option value="Left">Left</option>
-                        <option value="Right">Right</option>
-                        <option value="Bilateral">Bilateral</option>
-                      </select>
-                      {bodyParts.length > 1 && (
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveBodyPart(index)}
-                          className="p-2 text-red-600 hover:text-red-800"
-                          title="Remove body part"
-                        >
-                          ×
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
+  {/* Dropdown Row */}
+  <div className="flex flex-wrap items-center gap-3 mb-4">
+    {/* Body Part Dropdown */}
+    <select
+      value={formData.subjective.tempBodyPart || ''}
+      onChange={(e) =>
+        setFormData((prev) => ({
+          ...prev,
+          subjective: {
+            ...prev.subjective,
+            tempBodyPart: e.target.value,
+          },
+        }))
+      }
+      className="w-48 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+    >
+      <option value="">Select Body Part</option>
+      {[
+        'C/S', 'T/S', 'L/S', 'SH', 'ELB', 'WR', 'Hand', 'Finger(s)',
+        'Hip', 'KN', 'AN', 'Foot', 'Toe(s)',
+        'L Ant/Post/Lat/Med', 'R Ant/Post/Lat/Med',
+      ].map((part) => (
+        <option key={part} value={part}>{part}</option>
+      ))}
+    </select>
 
-          {/* Severity */}
-          <div className="mb-6">
-            <h3 className="text-lg font-semibold text-gray-800 mb-2">Severity</h3>
-            <div className="flex flex-wrap gap-2 text-sm">
-              {['1','2','3','4','5','6','7','8','9','10','Mild','Moderate','Severe'].map(val => (
-                <label key={val} className="flex items-center space-x-2">
-                  <input type="radio" name="subjective.severity" value={val} onChange={handleChange} />
-                  <span>{val}</span>
-                </label>
-              ))}
-            </div>
-          </div>
+    {/* Side Dropdown */}
+    <select
+      value={formData.subjective.tempSide || ''}
+      onChange={(e) =>
+        setFormData((prev) => ({
+          ...prev,
+          subjective: {
+            ...prev.subjective,
+            tempSide: e.target.value,
+          },
+        }))
+      }
+      className="w-40 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+    >
+      <option value="">Select Side</option>
+      <option value="Left">Left</option>
+      <option value="Right">Right</option>
+      <option value="Bilateral">Bilateral</option>
+    </select>
 
-          {/* Timing */}
-          <div className="mb-6">
-            <h3 className="text-lg font-semibold text-gray-800 mb-2">Timing</h3>
-            <div className="flex flex-wrap gap-4 text-sm">
-              {['Constant', 'Frequent', 'Intermittent', 'Occasional', 'Activity Dependent'].map(val => (
-                <label key={val} className="flex items-center space-x-2">
-                  <input type="radio" name="subjective.timing" value={val} onChange={handleChange} />
-                  <span>{val}</span>
-                </label>
-              ))}
-            </div>
-          </div>
+    {/* Add Button */}
+    <button
+      type="button"
+      onClick={() => {
+        const { tempBodyPart, tempSide } = formData.subjective;
+        if (tempBodyPart && tempSide) {
+          setFormData((prev) => ({
+            ...prev,
+            subjective: {
+              ...prev.subjective,
+              bodyPart: [
+                ...prev.subjective.bodyPart,
+                { part: tempBodyPart, side: tempSide },
+              ],
+              tempBodyPart: '',
+              tempSide: '',
+            },
+          }));
+        }
+      }}
+      className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700"
+    >
+      Add
+    </button>
+  </div>
 
-          {/* Context */}
-          <div className="mb-6">
-            <h3 className="text-lg font-semibold text-gray-800 mb-2">Context</h3>
-            <div className="flex flex-wrap gap-4 text-sm">
-              {['New', 'Improving', 'Worsening', 'Recurrent'].map(val => (
-                <label key={val} className="flex items-center space-x-2">
-                  <input type="radio" name="subjective.context" value={val} onChange={handleChange} />
-                  <span>{val}</span>
-                </label>
-              ))}
-            </div>
-          </div>
+  {/* Display Added Body Parts */}
+  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+    {formData.subjective.bodyPart.map((bp, index) => (
+      <div
+        key={index}
+        className="flex justify-between items-center bg-gray-100 px-3 py-2 rounded-md"
+      >
+        <span className="text-sm">
+          {bp.part} — <strong>{bp.side}</strong>
+        </span>
+        <button
+          type="button"
+          onClick={() => {
+            const updated = [...formData.subjective.bodyPart];
+            updated.splice(index, 1);
+            setFormData((prev) => ({
+              ...prev,
+              subjective: {
+                ...prev.subjective,
+                bodyPart: updated,
+              },
+            }));
+          }}
+          className="text-red-600 hover:text-red-800"
+        >
+          Remove
+        </button>
+      </div>
+    ))}
+  </div>
+</div>
 
-          {/* Notes */}
-          <div className="mb-6">
-            <label htmlFor="subjective.notes" className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
-            <textarea
-              name="subjective.notes"
-              id="subjective.notes"
-              rows={3}
-              value={formData.subjective.notes}
-              onChange={handleChange}
-              className="w-full border border-gray-300 rounded-md px-3 py-2"
-            ></textarea>
-          </div>
-        </div>
-        <div className="mt-8 flex justify-end">
+
+  {/* Headache */}
+  <div className="mb-6">
+    <h3 className="text-lg font-semibold text-gray-800 mb-2">Headache</h3>
+    <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-sm">
+      {["Headache", "Frontal", "Parietal", "Temporal", "Occipital", "Head contusion"].map((val) => (
+        <label key={val} className="flex items-center space-x-2">
+          <input
+            type="checkbox"
+            value={val}
+            checked={formData.subjective.symptoms.includes(val)}
+            onChange={(e) => {
+              const updated = e.target.checked
+                ? [...formData.subjective.symptoms, val]
+                : formData.subjective.symptoms.filter(sym => sym !== val);
+              setFormData(prev => ({
+                ...prev,
+                subjective: { ...prev.subjective, symptoms: updated }
+              }));
+            }}
+          />
+          <span>{val}</span>
+        </label>
+      ))}
+    </div>
+  </div>
+
+  {/* Severity */}
+  <div className="mb-6">
+    <h3 className="text-lg font-semibold text-gray-800 mb-2">Severity</h3>
+    <div className="flex flex-wrap gap-2 text-sm">
+      {["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "Mild", "Moderate", "Severe"].map(val => (
+        <label key={val} className="flex items-center space-x-2">
+          <input
+            type="radio"
+            name="subjective.severity"
+            value={val}
+            checked={formData.subjective.severity === val}
+            onChange={handleChange}
+          />
+          <span>{val}</span>
+        </label>
+      ))}
+    </div>
+  </div>
+
+  {/* Quality */}
+  <div className="mb-6">
+    <h3 className="text-lg font-semibold text-gray-800 mb-2">Quality</h3>
+    <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-sm">
+      {["Achy", "Dull", "Sharp", "Stabbing", "Throbbing", "Burning", "Crushing"].map(val => (
+        <label key={val} className="flex items-center space-x-2">
+          <input
+            type="checkbox"
+            value={val}
+            checked={formData.subjective.quality.includes(val)}
+            onChange={(e) => {
+              const updated = e.target.checked
+                ? [...formData.subjective.quality, val]
+                : formData.subjective.quality.filter(q => q !== val);
+              setFormData(prev => ({
+                ...prev,
+                subjective: { ...prev.subjective, quality: updated }
+              }));
+            }}
+          />
+          <span>{val}</span>
+        </label>
+      ))}
+    </div>
+  </div>
+
+  {/* Timing */}
+  <div className="mb-6">
+    <h3 className="text-lg font-semibold text-gray-800 mb-2">Timing</h3>
+    <div className="flex flex-wrap gap-4 text-sm">
+      {["Constant", "Frequent", "Intermittent", "Occasional", "Activity Dependent"].map(val => (
+        <label key={val} className="flex items-center space-x-2">
+          <input
+            type="radio"
+            name="subjective.timing"
+            value={val}
+            checked={formData.subjective.timing === val}
+            onChange={handleChange}
+          />
+          <span>{val}</span>
+        </label>
+      ))}
+    </div>
+  </div>
+
+  {/* Context */}
+  <div className="mb-6">
+    <h3 className="text-lg font-semibold text-gray-800 mb-2">Context</h3>
+    <div className="flex flex-wrap gap-4 text-sm">
+      {["New", "Improving", "Worsening", "Recurrent"].map(val => (
+        <label key={val} className="flex items-center space-x-2">
+          <input
+            type="radio"
+            name="subjective.context"
+            value={val}
+            checked={formData.subjective.context === val}
+            onChange={handleChange}
+          />
+          <span>{val}</span>
+        </label>
+      ))}
+    </div>
+  </div>
+
+  {/* Radiating To */}
+  <div className="mb-6">
+    <label htmlFor="subjective.radiatingTo" className="block text-sm font-medium text-gray-700 mb-1">
+      Radiating To
+    </label>
+    <input
+      type="text"
+      name="subjective.radiatingTo"
+      value={formData.subjective.radiatingTo}
+      onChange={handleChange}
+      className="w-full px-3 py-2 border border-gray-300 rounded-md"
+      placeholder="e.g., Arm, Leg, etc."
+    />
+  </div>
+
+  {/* Exacerbated By */}
+  <div className="mb-6">
+    <h3 className="text-lg font-semibold text-gray-800 mb-2">Exacerbated By</h3>
+    <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-sm">
+      {["Rest", "Increased Activity", "Prolonged Work", "School", "Stress", "Looking Up/Down", "Overhead Reach", "Sitting", "Standing", "Walking", "Twisting", "Stooping", "Bend", "Squat", "Kneel", "Lifting", "Carrying", "Serving", "Pulling/Pushing", "Grip/Grasp", "Chiro", "Physio", "Exercise", "Ice", "Heat", "Changes in the Weather"].map(val => (
+        <label key={val} className="flex items-center space-x-2">
+          <input
+            type="checkbox"
+            value={val}
+            checked={formData.subjective.exacerbatedBy.includes(val)}
+            onChange={(e) => {
+              const updated = e.target.checked
+                ? [...formData.subjective.exacerbatedBy, val]
+                : formData.subjective.exacerbatedBy.filter(v => v !== val);
+              setFormData(prev => ({
+                ...prev,
+                subjective: { ...prev.subjective, exacerbatedBy: updated }
+              }));
+            }}
+          />
+          <span>{val}</span>
+        </label>
+      ))}
+    </div>
+  </div>
+
+  {/* Signs/Symptoms */}
+  <div className="mb-6">
+    <h3 className="text-lg font-semibold text-gray-800 mb-2">Signs / Symptoms</h3>
+    <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-sm">
+      {["Tenderness", "Soreness", "Stiffness", "Tightness", "Loss of Motion", "Locking", "Grinding", "Popping", "Clicking", "Joint Instability", "Joint Redness", "Tingling", "Numbness", "Swelling", "Weakness", "Pulling", "Dropping Objects", "Dizziness", "Nausea", "Hearing Loss", "TMJ", "Double Vision", "Blurry Vision", "Photosensitivity", "Throat Pain", "Fever", "Rash", "Loss of Bowel or Bladder", "Feeling Mentally Foggy", "Feeling Slowed Down", "Difficulty Remembering", "Difficulty Concentrating"].map(val => (
+        <label key={val} className="flex items-center space-x-2">
+          <input
+            type="checkbox"
+            value={val}
+            checked={formData.subjective.symptoms.includes(val)}
+            onChange={(e) => {
+              const updated = e.target.checked
+                ? [...formData.subjective.symptoms, val]
+                : formData.subjective.symptoms.filter(s => s !== val);
+              setFormData(prev => ({
+                ...prev,
+                subjective: { ...prev.subjective, symptoms: updated }
+              }));
+            }}
+          />
+          <span>{val}</span>
+        </label>
+      ))}
+    </div>
+  </div>
+
+  {/* Radiating & Sciatica */}
+  <div className="mb-6 flex gap-12">
+    <div>
+      <h4 className="font-medium mb-1">Radiating</h4>
+      <label className="inline-flex items-center mr-4">
+        <input
+          type="checkbox"
+          checked={formData.subjective.radiatingRight}
+          onChange={(e) =>
+            setFormData(prev => ({ ...prev, subjective: { ...prev.subjective, radiatingRight: e.target.checked } }))
+          }
+        />
+        <span className="ml-2">R</span>
+      </label>
+      <label className="inline-flex items-center">
+        <input
+          type="checkbox"
+          checked={formData.subjective.radiatingLeft}
+          onChange={(e) =>
+            setFormData(prev => ({ ...prev, subjective: { ...prev.subjective, radiatingLeft: e.target.checked } }))
+          }
+        />
+        <span className="ml-2">L</span>
+      </label>
+    </div>
+    <div>
+      <h4 className="font-medium mb-1">Sciatica</h4>
+      <label className="inline-flex items-center mr-4">
+        <input
+          type="checkbox"
+          checked={formData.subjective.sciaticaRight}
+          onChange={(e) =>
+            setFormData(prev => ({ ...prev, subjective: { ...prev.subjective, sciaticaRight: e.target.checked } }))
+          }
+        />
+        <span className="ml-2">R</span>
+      </label>
+      <label className="inline-flex items-center">
+        <input
+          type="checkbox"
+          checked={formData.subjective.sciaticaLeft}
+          onChange={(e) =>
+            setFormData(prev => ({ ...prev, subjective: { ...prev.subjective, sciaticaLeft: e.target.checked } }))
+          }
+        />
+        <span className="ml-2">L</span>
+      </label>
+    </div>
+  </div>
+
+  {/* Notes */}
+  <div className="mb-6">
+    <label htmlFor="subjective.notes" className="block text-sm font-medium text-gray-700 mb-1">
+      Notes
+    </label>
+    <textarea
+      name="subjective.notes"
+      id="subjective.notes"
+      rows={3}
+      value={formData.subjective.notes}
+      onChange={handleChange}
+      className="w-full border border-gray-300 rounded-md px-3 py-2"
+    ></textarea>
+  </div>
+</div>
+
+<div className="mt-8 flex justify-end">
           <button
             type="button"
             onClick={() => navigate(-1)}
@@ -1411,7 +1523,6 @@ const PatientForm: React.FC = () => {
             )}
           </button>
         </div>
-      
         
 
 </form>

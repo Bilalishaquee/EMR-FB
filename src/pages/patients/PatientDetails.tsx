@@ -99,17 +99,7 @@ interface Patient {
     zipCode: string;
     country: string;
   };
-  emergencyContact: {
-    name: string;
-    relationship: string;
-    phone: string;
-  };
-  insuranceInfo: {
-    provider: string;
-    policyNumber: string;
-    groupNumber: string;
-    primaryInsured: string;
-  };
+ 
   medicalHistory: {
     allergies: string[];
     medications: string[];
@@ -124,8 +114,35 @@ interface Patient {
     timing: string;
     context: string;
     notes: string;
-    bodyPart: string[];
+    quality?: string[];
+    exacerbatedBy?: string[];
+    symptoms?: string[];
+    radiatingTo?: string;
+    radiatingRight?: boolean;
+    radiatingLeft?: boolean;
+    sciaticaRight?: boolean;
+    sciaticaLeft?: boolean;
+    bodyPart: {
+      part: string;
+      side: string;
+    }[];
   };
+  attorney?: {
+    name: string;
+    firm: string;
+    phone: string;
+    email: string;
+    caseNumber?: string; // <-- Add this
+    address: {
+      street: string;
+      city: string;
+      state: string;
+      zipCode: string;
+      country?: string; // <-- Optional, based on usage
+    };
+  };
+  
+    
   assignedDoctor: {
     _id: string;
     firstName: string;
@@ -315,7 +332,6 @@ const PatientDetails: React.FC<{}> = () => {
     personalInfo: true,
     contactInfo: true,
     medicalHistory: true,
-    insuranceInfo: true
   };
 
   useEffect(() => {
@@ -928,22 +944,7 @@ const PatientDetails: React.FC<{}> = () => {
                         {patient.address.country && <p>{patient.address.country}</p>}
                       </dd>
                     </div>
-                    <div>
-                      <dt className="text-sm font-medium text-gray-500">Emergency Contact</dt>
-                      <dd className="mt-1 text-sm text-gray-900">
-                        {patient.emergencyContact.name ? (
-                          <>
-                            <p>{patient.emergencyContact.name}</p>
-                            <p className="text-gray-600">
-                              {patient.emergencyContact.relationship && `${patient.emergencyContact.relationship} • `}
-                              {patient.emergencyContact.phone}
-                            </p>
-                          </>
-                        ) : (
-                          <p className="text-gray-500">No emergency contact provided</p>
-                        )}
-                      </dd>
-                    </div>
+                    
                   </dl>
                 </div>
               )}
@@ -1023,138 +1024,152 @@ const PatientDetails: React.FC<{}> = () => {
             </div>
 
 {/* Subjective Intake */}
- <div className="bg-white shadow rounded-lg overflow-hidden md:col-span-2">
+<div className="bg-white shadow rounded-lg overflow-hidden md:col-span-2">
   <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
     <h2 className="text-lg font-medium text-gray-900">Subjective Intake</h2>
   </div>
   <div className="px-6 py-4">
     <dl className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-6">
-      {/* <div>
-        <dt className="text-sm font-medium text-gray-500">Full Name</dt>
-        <dd className="mt-1 text-sm text-gray-900">{patient.subjective?.fullName || 'N/A'}</dd>
+
+    <div className="md:col-span-2">
+        <dt className="text-sm font-medium text-gray-500">Body Parts</dt>
+        <dd className="mt-1 text-sm text-gray-900">
+          {patient.subjective?.bodyPart?.length
+            ? patient.subjective.bodyPart.map(bp => `${bp.part} (${bp.side})`).join(', ')
+            : 'N/A'}
+        </dd>
       </div>
-      <div>
-        <dt className="text-sm font-medium text-gray-500">Date</dt>
-        <dd className="mt-1 text-sm text-gray-900">{patient.subjective?.date || 'N/A'}</dd>
-      </div> */}
       <div>
         <dt className="text-sm font-medium text-gray-500">Severity</dt>
         <dd className="mt-1 text-sm text-gray-900">{patient.subjective?.severity || 'N/A'}</dd>
       </div>
-      <div className="md:col-span-2">
-        <dt className="text-sm font-medium text-gray-500">Notes</dt>
-        <dd className="mt-1 text-sm text-gray-900 whitespace-pre-wrap">{patient.subjective?.notes || 'N/A'}</dd>
-      </div>
-      <div className="md:col-span-2">
-        <dt className="text-sm font-medium text-gray-500">Body Parts</dt>
-        <dd className="mt-1 text-sm text-gray-900">
-          {patient.subjective?.bodyPart?.length
-            ? patient.subjective.bodyPart.join(', ')
-            : 'N/A'}
-        </dd>
-      </div>
-      <div className="md:col-span-2">
+
+      <div>
         <dt className="text-sm font-medium text-gray-500">Timing</dt>
         <dd className="mt-1 text-sm text-gray-900">{patient.subjective?.timing || 'N/A'}</dd>
       </div>
-      <div className="md:col-span-2">
+
+      <div>
         <dt className="text-sm font-medium text-gray-500">Context</dt>
         <dd className="mt-1 text-sm text-gray-900">{patient.subjective?.context || 'N/A'}</dd>
+      </div>
+
+      <div>
+        <dt className="text-sm font-medium text-gray-500">Quality</dt>
+        <dd className="mt-1 text-sm text-gray-900">
+          {patient.subjective?.quality?.length
+            ? patient.subjective.quality.join(', ')
+            : 'N/A'}
+        </dd>
+      </div>
+
+      <div>
+        <dt className="text-sm font-medium text-gray-500">Exacerbated By</dt>
+        <dd className="mt-1 text-sm text-gray-900">
+          {patient.subjective?.exacerbatedBy?.length
+            ? patient.subjective.exacerbatedBy.join(', ')
+            : 'N/A'}
+        </dd>
+      </div>
+
+      <div>
+        <dt className="text-sm font-medium text-gray-500">Symptoms</dt>
+        <dd className="mt-1 text-sm text-gray-900">
+          {patient.subjective?.symptoms?.length
+            ? patient.subjective.symptoms.join(', ')
+            : 'N/A'}
+        </dd>
+      </div>
+
+      <div>
+        <dt className="text-sm font-medium text-gray-500">Radiating To</dt>
+        <dd className="mt-1 text-sm text-gray-900">{patient.subjective?.radiatingTo || 'N/A'}</dd>
+      </div>
+
+      <div>
+        <dt className="text-sm font-medium text-gray-500">Radiating Pain</dt>
+        <dd className="mt-1 text-sm text-gray-900">
+          {[
+            patient.subjective?.radiatingLeft && 'Left',
+            patient.subjective?.radiatingRight && 'Right',
+          ].filter(Boolean).join(', ') || 'None'}
+        </dd>
+      </div>
+
+      <div>
+        <dt className="text-sm font-medium text-gray-500">Sciatica</dt>
+        <dd className="mt-1 text-sm text-gray-900">
+          {[
+            patient.subjective?.sciaticaLeft && 'Left',
+            patient.subjective?.sciaticaRight && 'Right',
+          ].filter(Boolean).join(', ') || 'None'}
+        </dd>
+      </div>
+
+      <div className="md:col-span-2">
+        <dt className="text-sm font-medium text-gray-500">Notes</dt>
+        <dd className="mt-1 text-sm text-gray-900 whitespace-pre-wrap">{patient.subjective?.notes || 'N/A'}</dd>
       </div>
     </dl>
   </div>
 </div>
 
-            {/* Attorney Information */}
-            <div className="bg-white shadow rounded-lg overflow-hidden md:col-span-2">
-              <div className="px-6 py-4 border-b border-gray-200">
-                <h2 className="text-lg font-medium text-gray-900">Attorney Information</h2>
-              </div>
-              <div className="px-6 py-4">
-                <dl className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-6">
-                  <div>
-                    <dt className="text-sm font-medium text-gray-500">Attorney Name</dt>
-                    <dd className="mt-1 text-sm text-gray-900">
-                      {patient.attorney?.name || 'Not provided'}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt className="text-sm font-medium text-gray-500">Firm Name</dt>
-                    <dd className="mt-1 text-sm text-gray-900">
-                      {patient.attorney?.firm || 'Not provided'}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt className="text-sm font-medium text-gray-500">Phone</dt>
-                    <dd className="mt-1 text-sm text-gray-900">
-                      {patient.attorney?.phone || 'Not provided'}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt className="text-sm font-medium text-gray-500">Email</dt>
-                    <dd className="mt-1 text-sm text-gray-900">
-                      {patient.attorney?.email || 'Not provided'}
-                    </dd>
-                  </div>
-                  <div className="md:col-span-2">
-                    <dt className="text-sm font-medium text-gray-500">Address</dt>
-                    <dd className="mt-1 text-sm text-gray-900">
-                      {patient.attorney?.address?.street && <p>{patient.attorney.address.street}</p>}
-                      {(patient.attorney?.address?.city || patient.attorney?.address?.state) && (
-                        <p>
-                          {patient.attorney.address.city}, {patient.attorney.address.state} {patient.attorney.address.zipCode}
-                        </p>
-                      )}
-                      {patient.attorney?.address?.country && <p>{patient.attorney.address.country}</p>}
-                      {!patient.attorney?.address?.street && 'Not provided'}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt className="text-sm font-medium text-gray-500">Case Number</dt>
-                    <dd className="mt-1 text-sm text-gray-900">
-                      {patient.attorney?.caseNumber || 'Not provided'}
-                    </dd>
-                  </div>
-                </dl>
-              </div>
-            </div>
 
-            {/* Insurance Information */}
-            {/* <div className="bg-white shadow rounded-lg overflow-hidden md:col-span-2">
-              <div className="px-6 py-4 border-b border-gray-200">
-                <h2 className="text-lg font-medium text-gray-900">Insurance Information</h2>
-              </div>
-              {expandedSections.insuranceInfo && (
-                <div className="px-6 py-4">
-                  <dl className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-6">
-                    <div>
-                      <dt className="text-sm font-medium text-gray-500">Insurance Provider</dt>
-                      <dd className="mt-1 text-sm text-gray-900">
-                        {patient.insuranceInfo.provider || 'Not provided'}
-                      </dd>
-                    </div>
-                    <div>
-                      <dt className="text-sm font-medium text-gray-500">Policy Number</dt>
-                      <dd className="mt-1 text-sm text-gray-900">
-                        {patient.insuranceInfo.policyNumber || 'Not provided'}
-                      </dd>
-                    </div>
-                    <div>
-                      <dt className="text-sm font-medium text-gray-500">Group Number</dt>
-                      <dd className="mt-1 text-sm text-gray-900">
-                        {patient.insuranceInfo.groupNumber || 'Not provided'}
-                      </dd>
-                    </div>
-                    <div>
-                      <dt className="text-sm font-medium text-gray-500">Primary Insured</dt>
-                      <dd className="mt-1 text-sm text-gray-900">
-                        {patient.insuranceInfo.primaryInsured || 'Not provided'}
-                      </dd>
-                    </div>
-                  </dl>
-                </div>
-              )}
-            </div> */}
+            {/* Attorney Information */}
+<div className="bg-white shadow rounded-lg overflow-hidden md:col-span-2">
+  <div className="px-6 py-4 border-b border-gray-200">
+    <h2 className="text-lg font-medium text-gray-900">Attorney Information</h2>
+  </div>
+  <div className="px-6 py-4">
+    <dl className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-6">
+      <div>
+        <dt className="text-sm font-medium text-gray-500">Attorney Name</dt>
+        <dd className="mt-1 text-sm text-gray-900">
+          {patient.attorney?.name || 'Not provided'}
+        </dd>
+      </div>
+      <div>
+        <dt className="text-sm font-medium text-gray-500">Firm Name</dt>
+        <dd className="mt-1 text-sm text-gray-900">
+          {patient.attorney?.firm || 'Not provided'}
+        </dd>
+      </div>
+      <div>
+        <dt className="text-sm font-medium text-gray-500">Phone</dt>
+        <dd className="mt-1 text-sm text-gray-900">
+          {patient.attorney?.phone || 'Not provided'}
+        </dd>
+      </div>
+      <div>
+        <dt className="text-sm font-medium text-gray-500">Email</dt>
+        <dd className="mt-1 text-sm text-gray-900">
+          {patient.attorney?.email || 'Not provided'}
+        </dd>
+      </div>
+      <div className="md:col-span-2">
+        <dt className="text-sm font-medium text-gray-500">Address</dt>
+        <dd className="mt-1 text-sm text-gray-900">
+          {patient.attorney?.address?.street ? (
+            <>
+              <p>{patient.attorney.address.street}</p>
+              <p>{patient.attorney.address.city}, {patient.attorney.address.state} {patient.attorney.address.zipCode}</p>
+              {patient.attorney.address.country && <p>{patient.attorney.address.country}</p>}
+            </>
+          ) : (
+            'Not provided'
+          )}
+        </dd>
+      </div>
+      <div>
+        <dt className="text-sm font-medium text-gray-500">Case Number</dt>
+        <dd className="mt-1 text-sm text-gray-900">
+          {patient.attorney?.caseNumber || 'Not provided'}
+        </dd>
+      </div>
+    </dl>
+  </div>
+</div>
+
           </div>
         )}
 

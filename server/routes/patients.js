@@ -2,6 +2,7 @@ import express from 'express';
 import Patient from '../models/Patient.js';
 import { Visit, InitialVisit, FollowupVisit, DischargeVisit } from '../models/Visit.js';
 import { authenticateToken } from '../middleware/authMiddleware.js';
+import Counter from '../models/Counter.js'; // ✅ Import at the top
 
 const router = express.Router();
 
@@ -68,14 +69,29 @@ router.post('/', authenticateToken, async (req, res) => {
   try {
     const patientData = req.body;
 
+    // 🧠 Assign doctor if role is 'doctor'
     if (req.user.role === 'doctor') {
       patientData.assignedDoctor = req.user.id;
     }
 
+    // ✅ If attorney info is present, generate and assign caseNumber
+    if (patientData.attorney) {
+      const counter = await Counter.findOneAndUpdate(
+        { name: 'caseNumber' },
+        { $inc: { value: 1 } },
+        { new: true, upsert: true }
+      );
+
+      const formattedCaseNumber = `P-${String(counter.value).padStart(3, '0')}`;
+      patientData.attorney.caseNumber = formattedCaseNumber;
+    }
+
+    // 🎯 Create and save patient
     const patient = new Patient({
       ...patientData,
       subjective: patientData.subjective || {}
     });
+
     await patient.save();
 
     res.status(201).json({

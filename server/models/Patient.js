@@ -14,17 +14,6 @@ const PatientSchema = new mongoose.Schema({
     zipCode: String,
     country: String
   },
-  emergencyContact: {
-    name: String,
-    relationship: String,
-    phone: String
-  },
-  insuranceInfo: {
-    provider: String,
-    policyNumber: String,
-    groupNumber: String,
-    primaryInsured: String
-  },
   medicalHistory: {
     allergies: [String],
     medications: [String],
@@ -33,14 +22,7 @@ const PatientSchema = new mongoose.Schema({
     familyHistory: [String]
   },
   subjective: {
-    fullName: String,
-    date: String,
-    physical: [String],
-    sleep: [String],
-    cognitive: [String],
-    digestive: [String],
-    emotional: [String],
-    bodyPart: [String],
+    bodyPart: [{ part: String, side: String }],
     severity: String,
     quality: [String],
     timing: String,
@@ -54,21 +36,34 @@ const PatientSchema = new mongoose.Schema({
     sciaticaRight: Boolean,
     sciaticaLeft: Boolean
   },
+  attorney: {
+    name: String,
+    firm: String,
+    phone: String,
+    email: String,
+    caseNumber: String,
+    address: {
+      street: String,
+      city: String,
+      state: String,
+      zipCode: String,
+      country: String
+    }
+  },
   assignedDoctor: {
-  type: mongoose.Schema.Types.ObjectId,
-  ref: 'User',
-  required: true  // ✅ add this if doctors must be assigned
-}
-,
-status: {
-  type: String,
-  enum: ['active', 'discharged'],
-  default: 'active'
-}
-
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: true
+  },
+  status: {
+    type: String,
+    enum: ['active', 'discharged'],
+    default: 'active'
+  }
 }, {
   timestamps: true
 });
+
 
 const Patient = mongoose.model('Patient', PatientSchema);
 export default Patient;
