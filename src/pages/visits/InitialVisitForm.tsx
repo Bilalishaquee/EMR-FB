@@ -309,14 +309,28 @@ const { data: patientData, isLoading } = useQuery({
 
   const triggerAutoSave = () => {
     if (autoSaveTimer) clearTimeout(autoSaveTimer);
+    
     const timer = setTimeout(() => {
-      localStorage.setItem(`initialVisit_${id}`, JSON.stringify(formData));
-      setAutoSaveStatus('Auto-saved');
-      setTimeout(() => setAutoSaveStatus(''), 2000);
-    }, 1500);
+      try {
+        const dataString = JSON.stringify(formData);
+        const lastSaved = localStorage.getItem(`initialVisit_${id}`);
+        
+        // Only save if data has actually changed
+        if (dataString !== lastSaved) {
+          localStorage.setItem(`initialVisit_${id}`, dataString);
+          setAutoSaveStatus('Auto-saved');
+          setTimeout(() => setAutoSaveStatus(''), 2000);
+        }
+      } catch (error) {
+        console.error('Auto-save failed:', error);
+        setAutoSaveStatus('Save failed');
+        setTimeout(() => setAutoSaveStatus(''), 2000);
+      }
+    }, 4000); // Even longer delay - 4 seconds
+    
     setAutoSaveTimer(timer);
   };
-
+  
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSaving(true);
@@ -359,45 +373,71 @@ const { data: patientData, isLoading } = useQuery({
   };
   
   // ✅ Add this handler above your return statement
-const handleNestedInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-  const { name, value } = e.target;
-  const parts = name.split('.');
+  const handleNestedInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    const parts = name.split('.');
+  
+    setFormData((prev) => {
+      const updated = { ...prev };
+  
+      if (parts[0] === 'arom') {
+        // arom.CERVICAL.FLEXION.wnl
+        const [_, region, movement, field] = parts;
+        updated.arom = {
+          ...prev.arom,
+          [region]: {
+            ...(prev.arom?.[region] || {}),
+            [movement]: {
+              ...(prev.arom?.[region]?.[movement] || {}),
+              [field]: value
+            }
+          }
+        };
+      } else if (parts[0] === 'ortho') {
+        const [_, test, side] = parts;
+        updated.ortho = {
+          ...prev.ortho,
+          [test]: {
+            ...(prev.ortho?.[test] || {}),
+            [side]: value
+          }
+        };
+      } else if (parts[0] === 'tenderness' || parts[0] === 'spasm') {
+        const [section, region, index] = parts;
+        updated[section] = {
+          ...prev[section],
+          [region]: [
+            ...(prev[section]?.[region] || []),
+          ]
+        };
+        updated[section][region][index] = value;
+      }
+  
+      return updated;
+    });
+  
+    triggerAutoSave();
+  };
 
-  setFormData((prev) => {
-    const updated = { ...prev };
-
-    if (parts[0] === 'arom') {
-      const [_, bodyPart, field] = parts;
-      updated.arom = {
-        ...prev.arom,
-        [bodyPart]: {
-          ...(prev.arom?.[bodyPart] || {}),
-          [field]: value
-        }
-      };
-    } else if (parts[0] === 'ortho') {
-      const [_, test, side] = parts;
-      updated.ortho = {
-        ...prev.ortho,
-        [test]: {
-          ...(prev.ortho?.[test] || {}),
-          [side]: value
-        }
-      };
-    } else if (parts[0] === 'tenderness' || parts[0] === 'spasm') {
-      const [section, region, index] = parts;
-      updated[section] = {
-        ...prev[section],
-        [region]: [
-          ...(prev[section]?.[region] || []),
-        ]
-      };
-      updated[section][region][index] = value;
-    }
-
-    return updated;
+// Add this above your return statement
+const handleTendernessSpasmChange = (
+  section: string,
+  type: 'tenderness' | 'spasm',
+  label: string,
+  checked: boolean
+) => {
+  setFormData(prev => {
+    const prevArr = Array.isArray(prev[type][section]) ? prev[type][section] : [];
+    return {
+      ...prev,
+      [type]: {
+        ...prev[type],
+        [section]: checked
+          ? [...prevArr, label]
+          : prevArr.filter(item => item !== label)
+      }
+    };
   });
-
   triggerAutoSave();
 };
 
@@ -1037,60 +1077,60 @@ const handleNestedInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
   <h2 className="text-lg font-bold mb-2">AROM/ORTHOPEDIC TESTING</h2>
 
   <div className="grid grid-cols-2 gap-6 w-full">
-    {/* Left Side: CERVICAL AROM */}
-    <table className="table-fixed border border-black w-full text-center">
-      <thead>
-        <tr className="bg-gray-100">
-          <th className="border border-black px-2 py-1">CERVICAL</th>
-          <th className="border border-black px-2 py-1">NL</th>
-          <th className="border border-black px-2 py-1">WNL</th>
-          <th className="border border-black px-2 py-1">EXAM</th>
-          <th className="border border-black px-2 py-1">PAIN</th>
+  {/* Left Side: CERVICAL AROM */}
+  <table className="table-fixed border border-black w-full text-center">
+    <thead>
+      <tr className="bg-gray-100">
+        <th className="border border-black px-2 py-1">CERVICAL</th>
+        <th className="border border-black px-2 py-1">NL</th>
+        <th className="border border-black px-2 py-1">WNL</th>
+        <th className="border border-black px-2 py-1">EXAM</th>
+        <th className="border border-black px-2 py-1">PAIN</th>
+      </tr>
+    </thead>
+    <tbody>
+      {[
+        ['FLEXION', '50°'],
+        ['EXTENSION', '60°'],
+        ['L LAT BEND', '45°'],
+        ['R LAT BEND', '45°'],
+        ['L ROTATION', '80°'],
+        ['R ROTATION', '80°'],
+      ].map(([label, nl]) => (
+        <tr key={label}>
+          <td className="border border-black px-2 py-1">{label}</td>
+          <td className="border border-black px-2 py-1">{nl}</td>
+          <td className="border border-black px-2 py-1">
+            <input
+              type="text"
+              name={`arom.CERVICAL.${label}.wnl`}
+              value={formData.arom?.CERVICAL?.[label]?.wnl || ''}
+              onChange={handleNestedInputChange}
+              className="w-full px-1 py-0.5"
+            />
+          </td>
+          <td className="border border-black px-2 py-1">
+            <input
+              type="text"
+              name={`arom.CERVICAL.${label}.exam`}
+              value={formData.arom?.CERVICAL?.[label]?.exam || ''}
+              onChange={handleNestedInputChange}
+              className="w-full px-1 py-0.5"
+            />
+          </td>
+          <td className="border border-black px-2 py-1">
+            <input
+              type="text"
+              name={`arom.CERVICAL.${label}.pain`}
+              value={formData.arom?.CERVICAL?.[label]?.pain || ''}
+              onChange={handleNestedInputChange}
+              className="w-full px-1 py-0.5"
+            />
+          </td>
         </tr>
-      </thead>
-      <tbody>
-        {[
-          ['FLEXION', '50°'],
-          ['EXTENSION', '60°'],
-          ['L LAT BEND', '45°'],
-          ['R LAT BEND', '45°'],
-          ['L ROTATION', '80°'],
-          ['R ROTATION', '80°'],
-        ].map(([label, nl]) => (
-          <tr key={label}>
-            <td className="border border-black px-2 py-1">{label}</td>
-            <td className="border border-black px-2 py-1">{nl}</td>
-            <td className="border border-black px-2 py-1">
-              <input
-                type="text"
-                name={`arom.${label}.wnl`}
-                value={formData.arom?.[label]?.wnl || ''}
-                onChange={handleNestedInputChange}
-                className="w-full px-1 py-0.5"
-              />
-            </td>
-            <td className="border border-black px-2 py-1">
-              <input
-                type="text"
-                name={`arom.${label}.exam`}
-                value={formData.arom?.[label]?.exam || ''}
-                onChange={handleNestedInputChange}
-                className="w-full px-1 py-0.5"
-              />
-            </td>
-            <td className="border border-black px-2 py-1">
-              <input
-                type="text"
-                name={`arom.${label}.pain`}
-                value={formData.arom?.[label]?.pain || ''}
-                onChange={handleNestedInputChange}
-                className="w-full px-1 py-0.5"
-              />
-            </td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
+      ))}
+    </tbody>
+  </table>
 
     {/* Right Side: ORTHOPEDIC TEST */}
     <table className="table-fixed border border-black w-full text-center">
@@ -1134,68 +1174,44 @@ const handleNestedInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     <div>
       <span className="font-bold mr-2">TENDERNESS</span>
       {[
-        'Facets',
-        'C/S Paraspinal',
-        'Trapezius',
-        'Sub Occipital',
-        'Scalene',
-        'SCM',
-        'Cervicothoracic',
-        'Levator scapulae'
-      ].map(label => (
-        <label key={label} className="mr-4 inline-flex items-center">
-          <input
-            type="checkbox"
-            className="mr-1"
-            name={`tenderness.${label}`}
-            checked={Array.isArray(formData.tenderness) && formData.tenderness.includes(label)}
-            onChange={(e) => {
-              setFormData((prev) => {
-                const list = Array.isArray(prev.tenderness) ? prev.tenderness : [];
-                return {
-                  ...prev,
-                  tenderness: e.target.checked
-                    ? [...list, label]
-                    : list.filter(item => item !== label)
-                };
-              });
-              triggerAutoSave();
-            }}
-          />
-          {label}
-        </label>
-      ))}
+  'Facets',
+  'C/S Paraspinal',
+  'Trapezius',
+  'Sub Occipital',
+  'Scalene',
+  'SCM',
+  'Cervicothoracic',
+  'Levator scapulae'
+].map(label => (
+  <label key={label} className="mr-4 inline-flex items-center">
+    <input
+      type="checkbox"
+      className="mr-1"
+      checked={Array.isArray(formData.tenderness.cervical) && formData.tenderness.cervical.includes(label)}
+      onChange={e => handleTendernessSpasmChange('cervical', 'tenderness', label, e.target.checked)}
+    />
+    {label}
+  </label>
+))}
     </div>
     <div>
       <span className="font-bold mr-2">SPASM</span>
       {[
-        'C/S Paraspinal',
-        'Trapezius',
-        'Sub Occipital',
-        'Cervicothoracic'
-      ].map(label => (
-        <label key={label} className="mr-4 inline-flex items-center">
-          <input
-            type="checkbox"
-            className="mr-1"
-            name={`spasm.${label}`}
-            checked={Array.isArray(formData.spasm) && formData.spasm.includes(label)}
-            onChange={(e) => {
-              setFormData((prev) => {
-                const list = Array.isArray(prev.spasm) ? prev.spasm : [];
-                return {
-                  ...prev,
-                  spasm: e.target.checked
-                    ? [...list, label]
-                    : list.filter(item => item !== label)
-                };
-              });
-              triggerAutoSave();
-            }}
-          />
-          {label}
-        </label>
-      ))}
+  'C/S Paraspinal',
+  'Trapezius',
+  'Sub Occipital',
+  'Cervicothoracic'
+].map(label => (
+  <label key={label} className="mr-4 inline-flex items-center">
+    <input
+      type="checkbox"
+      className="mr-1"
+      checked={Array.isArray(formData.spasm.cervical) && formData.spasm.cervical.includes(label)}
+      onChange={e => handleTendernessSpasmChange('cervical', 'spasm', label, e.target.checked)}
+    />
+    {label}
+  </label>
+))}
     </div>
   </div>
 </section>
@@ -1226,13 +1242,31 @@ const handleNestedInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
             <td className="border border-black px-2 py-1">{label}</td>
             <td className="border border-black px-2 py-1">{nl}</td>
             <td className="border border-black px-2 py-1">
-              <input type="text" className="w-full px-1 py-0.5" name={`thoracic.${label}.wnl`} />
+              <input
+                type="text"
+                className="w-full px-1 py-0.5"
+                name={`arom.THORACIC.${label}.wnl`}
+                value={formData.arom?.THORACIC?.[label]?.wnl || ''}
+                onChange={handleNestedInputChange}
+              />
             </td>
             <td className="border border-black px-2 py-1">
-              <input type="text" className="w-full px-1 py-0.5" name={`thoracic.${label}.exam`} />
+              <input
+                type="text"
+                className="w-full px-1 py-0.5"
+                name={`arom.THORACIC.${label}.exam`}
+                value={formData.arom?.THORACIC?.[label]?.exam || ''}
+                onChange={handleNestedInputChange}
+              />
             </td>
             <td className="border border-black px-2 py-1">
-              <input type="text" className="w-full px-1 py-0.5" name={`thoracic.${label}.pain`} />
+              <input
+                type="text"
+                className="w-full px-1 py-0.5"
+                name={`arom.THORACIC.${label}.pain`}
+                value={formData.arom?.THORACIC?.[label]?.pain || ''}
+                onChange={handleNestedInputChange}
+              />
             </td>
           </tr>
         ))}
@@ -1249,14 +1283,26 @@ const handleNestedInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         </tr>
       </thead>
       <tbody>
-        {['Kemps', 'Valsalva', 'Adam’s', '', ''].map(test => (
-          <tr key={test || Math.random()}>
+        {['Kemps', 'Valsalva', "Adam’s"].map(test => (
+          <tr key={test}>
             <td className="border border-black px-2 py-1">{test}</td>
             <td className="border border-black px-2 py-1">
-              <input type="text" className="w-full px-1 py-0.5" name={`ortho.${test}.left`} />
+              <input
+                type="text"
+                className="w-full px-1 py-0.5"
+                name={`ortho.${test}.left`}
+                value={formData.ortho?.[test]?.left || ''}
+                onChange={handleNestedInputChange}
+              />
             </td>
             <td className="border border-black px-2 py-1">
-              <input type="text" className="w-full px-1 py-0.5" name={`ortho.${test}.right`} />
+              <input
+                type="text"
+                className="w-full px-1 py-0.5"
+                name={`ortho.${test}.right`}
+                value={formData.ortho?.[test]?.right || ''}
+                onChange={handleNestedInputChange}
+              />
             </td>
           </tr>
         ))}
@@ -1276,9 +1322,14 @@ const handleNestedInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
       'Rhomboids',
       'Cervicothoracic',
       'Thoracolumbar',
-    ].map((label, idx) => (
-      <label key={idx} className="inline-flex items-center mr-4">
-        <input type="checkbox" className="mr-1" />
+    ].map(label => (
+      <label key={label} className="inline-flex items-center mr-4">
+        <input
+          type="checkbox"
+          className="mr-1"
+          checked={Array.isArray(formData.tenderness?.thoracic) && formData.tenderness.thoracic.includes(label)}
+          onChange={e => handleTendernessSpasmChange('thoracic', 'tenderness', label, e.target.checked)}
+        />
         {label}
       </label>
     ))}
@@ -1298,9 +1349,14 @@ const handleNestedInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
       'Med Scap',
       'Lat Scap',
       'Levator Scap',
-    ].map((label, idx) => (
-      <label key={idx} className="inline-flex items-center mr-4">
-        <input type="checkbox" className="mr-1" />
+    ].map(label => (
+      <label key={label} className="inline-flex items-center mr-4">
+        <input
+          type="checkbox"
+          className="mr-1"
+          checked={Array.isArray(formData.spasm?.thoracic) && formData.spasm.thoracic.includes(label)}
+          onChange={e => handleTendernessSpasmChange('thoracic', 'spasm', label, e.target.checked)}
+        />
         {label}
       </label>
     ))}
@@ -1334,13 +1390,31 @@ const handleNestedInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
             <td className="border border-black px-2 py-1">{label}</td>
             <td className="border border-black px-2 py-1">{nl}</td>
             <td className="border border-black px-2 py-1">
-              <input type="text" name={`lumbar.${label}.wnl`} className="w-full px-1 py-0.5" />
+              <input
+                type="text"
+                name={`arom.LUMBAR.${label}.wnl`}
+                className="w-full px-1 py-0.5"
+                value={formData.arom?.LUMBAR?.[label]?.wnl || ''}
+                onChange={handleNestedInputChange}
+              />
             </td>
             <td className="border border-black px-2 py-1">
-              <input type="text" name={`lumbar.${label}.exam`} className="w-full px-1 py-0.5" />
+              <input
+                type="text"
+                name={`arom.LUMBAR.${label}.exam`}
+                className="w-full px-1 py-0.5"
+                value={formData.arom?.LUMBAR?.[label]?.exam || ''}
+                onChange={handleNestedInputChange}
+              />
             </td>
             <td className="border border-black px-2 py-1">
-              <input type="text" name={`lumbar.${label}.pain`} className="w-full px-1 py-0.5" />
+              <input
+                type="text"
+                name={`arom.LUMBAR.${label}.pain`}
+                className="w-full px-1 py-0.5"
+                value={formData.arom?.LUMBAR?.[label]?.pain || ''}
+                onChange={handleNestedInputChange}
+              />
             </td>
           </tr>
         ))}
@@ -1357,14 +1431,26 @@ const handleNestedInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         </tr>
       </thead>
       <tbody>
-        {['Kemps', 'Sitting SLR', 'SLR', 'Valsalva', 'Gaenslen’s', '', ''].map(test => (
-          <tr key={test || Math.random()}>
+        {['Kemps', 'Sitting SLR', 'SLR', 'Valsalva', 'Gaenslen’s'].map(test => (
+          <tr key={test}>
             <td className="border border-black px-2 py-1">{test}</td>
             <td className="border border-black px-2 py-1">
-              <input type="text" name={`ortho.${test}.left`} className="w-full px-1 py-0.5" />
+              <input
+                type="text"
+                name={`ortho.${test}.left`}
+                className="w-full px-1 py-0.5"
+                value={formData.ortho?.[test]?.left || ''}
+                onChange={handleNestedInputChange}
+              />
             </td>
             <td className="border border-black px-2 py-1">
-              <input type="text" name={`ortho.${test}.right`} className="w-full px-1 py-0.5" />
+              <input
+                type="text"
+                name={`ortho.${test}.right`}
+                className="w-full px-1 py-0.5"
+                value={formData.ortho?.[test]?.right || ''}
+                onChange={handleNestedInputChange}
+              />
             </td>
           </tr>
         ))}
@@ -1384,9 +1470,14 @@ const handleNestedInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
       'Sacrum',
       'Coccyx',
       'Thoracolumbar',
-    ].map((label, idx) => (
-      <label key={idx} className="inline-flex items-center mr-4">
-        <input type="checkbox" className="mr-1" />
+    ].map(label => (
+      <label key={label} className="inline-flex items-center mr-4">
+        <input
+          type="checkbox"
+          className="mr-1"
+          checked={Array.isArray(formData.tenderness?.lumbar) && formData.tenderness.lumbar.includes(label)}
+          onChange={e => handleTendernessSpasmChange('lumbar', 'tenderness', label, e.target.checked)}
+        />
         {label}
       </label>
     ))}
@@ -1395,9 +1486,14 @@ const handleNestedInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
   {/* SPASM Row */}
   <div className="mt-2">
     <strong className="mr-2">SPASM</strong>
-    {['L/S Paraspinal', 'Gluteus Maximus', 'Thoracolumbar'].map((label, idx) => (
-      <label key={idx} className="inline-flex items-center mr-4">
-        <input type="checkbox" className="mr-1" />
+    {['L/S Paraspinal', 'Gluteus Maximus', 'Thoracolumbar'].map(label => (
+      <label key={label} className="inline-flex items-center mr-4">
+        <input
+          type="checkbox"
+          className="mr-1"
+          checked={Array.isArray(formData.spasm?.lumbar) && formData.spasm.lumbar.includes(label)}
+          onChange={e => handleTendernessSpasmChange('lumbar', 'spasm', label, e.target.checked)}
+        />
         {label}
       </label>
     ))}
@@ -1428,19 +1524,66 @@ const handleNestedInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
           ['ABDUCTION', '180°'],
           ['INT ROTATION', '90°'],
           ['EXT ROTATION', '90°'],
-        ].map(([label, nl], index) => (
+        ].map(([label, nl]) => (
           <tr key={label}>
             <td className="border border-black px-2 py-1">{label}</td>
             <td className="border border-black px-2 py-1">{nl}</td>
-            {[...Array(6)].map((_, i) => (
-              <td key={i} className="border border-black px-2 py-1">
-                <input
-                  type="text"
-                  name={`shoulder.${label}.${i}`}
-                  className="w-full text-center outline-none"
-                />
-              </td>
-            ))}
+            {/* LEFT SIDE */}
+            <td className="border border-black px-2 py-1">
+              <input
+                type="text"
+                name={`arom.SHOULDER.${label}.wnl_left`}
+                className="w-full text-center outline-none"
+                value={formData.arom?.SHOULDER?.[label]?.wnl_left || ''}
+                onChange={handleNestedInputChange}
+              />
+            </td>
+            <td className="border border-black px-2 py-1">
+              <input
+                type="text"
+                name={`arom.SHOULDER.${label}.left`}
+                className="w-full text-center outline-none"
+                value={formData.arom?.SHOULDER?.[label]?.left || ''}
+                onChange={handleNestedInputChange}
+              />
+            </td>
+            <td className="border border-black px-2 py-1">
+              <input
+                type="text"
+                name={`arom.SHOULDER.${label}.pain_left`}
+                className="w-full text-center outline-none"
+                value={formData.arom?.SHOULDER?.[label]?.pain_left || ''}
+                onChange={handleNestedInputChange}
+              />
+            </td>
+            {/* RIGHT SIDE */}
+            <td className="border border-black px-2 py-1">
+              <input
+                type="text"
+                name={`arom.SHOULDER.${label}.wnl_right`}
+                className="w-full text-center outline-none"
+                value={formData.arom?.SHOULDER?.[label]?.wnl_right || ''}
+                onChange={handleNestedInputChange}
+              />
+            </td>
+            <td className="border border-black px-2 py-1">
+              <input
+                type="text"
+                name={`arom.SHOULDER.${label}.right`}
+                className="w-full text-center outline-none"
+                value={formData.arom?.SHOULDER?.[label]?.right || ''}
+                onChange={handleNestedInputChange}
+              />
+            </td>
+            <td className="border border-black px-2 py-1">
+              <input
+                type="text"
+                name={`arom.SHOULDER.${label}.pain_right`}
+                className="w-full text-center outline-none"
+                value={formData.arom?.SHOULDER?.[label]?.pain_right || ''}
+                onChange={handleNestedInputChange}
+              />
+            </td>
           </tr>
         ))}
       </tbody>
@@ -1466,15 +1609,24 @@ const handleNestedInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         ].map(test => (
           <tr key={test}>
             <td className="border border-black px-2 py-1">{test}</td>
-            {[...Array(2)].map((_, i) => (
-              <td key={i} className="border border-black px-2 py-1">
-                <input
-                  type="text"
-                  name={`orthoTest.${test}.${i === 0 ? 'left' : 'right'}`}
-                  className="w-full text-center outline-none"
-                />
-              </td>
-            ))}
+            <td className="border border-black px-2 py-1">
+              <input
+                type="text"
+                name={`ortho.${test}.left`}
+                className="w-full text-center outline-none"
+                value={formData.ortho?.[test]?.left || ''}
+                onChange={handleNestedInputChange}
+              />
+            </td>
+            <td className="border border-black px-2 py-1">
+              <input
+                type="text"
+                name={`ortho.${test}.right`}
+                className="w-full text-center outline-none"
+                value={formData.ortho?.[test]?.right || ''}
+                onChange={handleNestedInputChange}
+              />
+            </td>
           </tr>
         ))}
       </tbody>
@@ -1487,9 +1639,14 @@ const handleNestedInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     {[
       'Ant', 'Post', 'Lat', 'AC', 'Deltoid', 'GH', 'Bicipital', 'Trap', 'Supra Spin', 'Infra Spin',
       'Scapula', 'Infra Scap', 'Med Scap', 'Rot Cuff', 'Brachialis', 'Bicep', 'Tricep', 'Levator Scap', 'Rhomboids',
-    ].map((label, idx) => (
-      <label key={idx} className="inline-flex items-center">
-        <input type="checkbox" className="mr-1" />
+    ].map(label => (
+      <label key={label} className="inline-flex items-center">
+        <input
+          type="checkbox"
+          className="mr-1"
+          checked={Array.isArray(formData.tenderness?.shoulder) && formData.tenderness.shoulder.includes(label)}
+          onChange={e => handleTendernessSpasmChange('shoulder', 'tenderness', label, e.target.checked)}
+        />
         {label}
       </label>
     ))}
@@ -1501,9 +1658,14 @@ const handleNestedInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     {[
       'Ant', 'Post', 'Lat', 'AC', 'Deltoid', 'GH', 'Trap', 'Supra Spin', 'Infra Spin',
       'Subscapularis', 'Infra Scap', 'Med Scap', 'Levator Scap', 'Rhomboids',
-    ].map((label, idx) => (
-      <label key={idx} className="inline-flex items-center">
-        <input type="checkbox" className="mr-1" />
+    ].map(label => (
+      <label key={label} className="inline-flex items-center">
+        <input
+          type="checkbox"
+          className="mr-1"
+          checked={Array.isArray(formData.spasm?.shoulder) && formData.spasm.shoulder.includes(label)}
+          onChange={e => handleTendernessSpasmChange('shoulder', 'spasm', label, e.target.checked)}
+        />
         {label}
       </label>
     ))}
@@ -1536,15 +1698,62 @@ const handleNestedInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
           <tr key={label}>
             <td className="border border-black px-2 py-1">{label}</td>
             <td className="border border-black px-2 py-1">{nl}</td>
-            {[...Array(6)].map((_, i) => (
-              <td key={i} className="border border-black px-2 py-1">
-                <input
-                  type="text"
-                  name={`elbow.${label}.${i}`}
-                  className="w-full text-center outline-none"
-                />
-              </td>
-            ))}
+            {/* LEFT SIDE */}
+            <td className="border border-black px-2 py-1">
+              <input
+                type="text"
+                name={`arom.ELBOW.${label}.wnl_left`}
+                className="w-full text-center outline-none"
+                value={formData.arom?.ELBOW?.[label]?.wnl_left || ''}
+                onChange={handleNestedInputChange}
+              />
+            </td>
+            <td className="border border-black px-2 py-1">
+              <input
+                type="text"
+                name={`arom.ELBOW.${label}.left`}
+                className="w-full text-center outline-none"
+                value={formData.arom?.ELBOW?.[label]?.left || ''}
+                onChange={handleNestedInputChange}
+              />
+            </td>
+            <td className="border border-black px-2 py-1">
+              <input
+                type="text"
+                name={`arom.ELBOW.${label}.pain_left`}
+                className="w-full text-center outline-none"
+                value={formData.arom?.ELBOW?.[label]?.pain_left || ''}
+                onChange={handleNestedInputChange}
+              />
+            </td>
+            {/* RIGHT SIDE */}
+            <td className="border border-black px-2 py-1">
+              <input
+                type="text"
+                name={`arom.ELBOW.${label}.wnl_right`}
+                className="w-full text-center outline-none"
+                value={formData.arom?.ELBOW?.[label]?.wnl_right || ''}
+                onChange={handleNestedInputChange}
+              />
+            </td>
+            <td className="border border-black px-2 py-1">
+              <input
+                type="text"
+                name={`arom.ELBOW.${label}.right`}
+                className="w-full text-center outline-none"
+                value={formData.arom?.ELBOW?.[label]?.right || ''}
+                onChange={handleNestedInputChange}
+              />
+            </td>
+            <td className="border border-black px-2 py-1">
+              <input
+                type="text"
+                name={`arom.ELBOW.${label}.pain_right`}
+                className="w-full text-center outline-none"
+                value={formData.arom?.ELBOW?.[label]?.pain_right || ''}
+                onChange={handleNestedInputChange}
+              />
+            </td>
           </tr>
         ))}
       </tbody>
@@ -1564,15 +1773,33 @@ const handleNestedInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         {['Cozens', 'Varus/Valgus', 'Mill’s'].map(test => (
           <tr key={test}>
             <td className="border border-black px-2 py-1">{test}</td>
-            {[...Array(3)].map((_, i) => (
-              <td key={i} className="border border-black px-2 py-1">
-                <input
-                  type="text"
-                  name={`orthoElbow.${test}.${i}`}
-                  className="w-full text-center outline-none"
-                />
-              </td>
-            ))}
+            <td className="border border-black px-2 py-1">
+              <input
+                type="text"
+                name={`ortho.${test}.left`}
+                className="w-full text-center outline-none"
+                value={formData.ortho?.[test]?.left || ''}
+                onChange={handleNestedInputChange}
+              />
+            </td>
+            <td className="border border-black px-2 py-1">
+              <input
+                type="text"
+                name={`ortho.${test}.right`}
+                className="w-full text-center outline-none"
+                value={formData.ortho?.[test]?.right || ''}
+                onChange={handleNestedInputChange}
+              />
+            </td>
+            <td className="border border-black px-2 py-1">
+              <input
+                type="text"
+                name={`ortho.${test}.lig_laxity`}
+                className="w-full text-center outline-none"
+                value={formData.ortho?.[test]?.lig_laxity || ''}
+                onChange={handleNestedInputChange}
+              />
+            </td>
           </tr>
         ))}
       </tbody>
@@ -1585,9 +1812,14 @@ const handleNestedInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     {[
       'Ant', 'Post', 'Med', 'Lat', 'Olecranon', 'Med Epicondyle', 'Lat Epicondyle', 'Forearm',
       'Brachialis', 'Triceps', 'Biceps', 'Ulnar Notch', 'Radial Head', 'Cubital Fossa',
-    ].map((label, idx) => (
-      <label key={idx} className="inline-flex items-center">
-        <input type="checkbox" className="mr-1" />
+    ].map(label => (
+      <label key={label} className="inline-flex items-center">
+        <input
+          type="checkbox"
+          className="mr-1"
+          checked={Array.isArray(formData.tenderness?.elbow) && formData.tenderness.elbow.includes(label)}
+          onChange={e => handleTendernessSpasmChange('elbow', 'tenderness', label, e.target.checked)}
+        />
         {label}
       </label>
     ))}
@@ -1596,9 +1828,14 @@ const handleNestedInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
   {/* SPASM */}
   <div className="mt-2 flex flex-wrap gap-4">
     <strong className="mr-2">SPASM</strong>
-    {['Ant', 'Post', 'Med', 'Lat', 'Forearm', 'Brachialis', 'Triceps', 'Biceps'].map((label, idx) => (
-      <label key={idx} className="inline-flex items-center">
-        <input type="checkbox" className="mr-1" />
+    {['Ant', 'Post', 'Med', 'Lat', 'Forearm', 'Brachialis', 'Triceps', 'Biceps'].map(label => (
+      <label key={label} className="inline-flex items-center">
+        <input
+          type="checkbox"
+          className="mr-1"
+          checked={Array.isArray(formData.spasm?.elbow) && formData.spasm.elbow.includes(label)}
+          onChange={e => handleTendernessSpasmChange('elbow', 'spasm', label, e.target.checked)}
+        />
         {label}
       </label>
     ))}
@@ -1631,15 +1868,68 @@ const handleNestedInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
           <tr key={label}>
             <td className="border border-black px-2 py-1">{label}</td>
             <td className="border border-black px-2 py-1">{nl}</td>
-            {[...Array(6)].map((_, i) => (
-              <td key={i} className="border border-black px-2 py-1">
-                <input
-                  type="text"
-                  className="w-full px-1 py-0.5 border-none text-center outline-none"
-                  placeholder="..."
-                />
-              </td>
-            ))}
+            {/* LEFT SIDE */}
+            <td className="border border-black px-2 py-1">
+              <input
+                type="text"
+                name={`arom.WRIST.${label}.wnl_left`}
+                className="w-full px-1 py-0.5 border-none text-center outline-none"
+                value={formData.arom?.WRIST?.[label]?.wnl_left || ''}
+                onChange={handleNestedInputChange}
+                placeholder="..."
+              />
+            </td>
+            <td className="border border-black px-2 py-1">
+              <input
+                type="text"
+                name={`arom.WRIST.${label}.left`}
+                className="w-full px-1 py-0.5 border-none text-center outline-none"
+                value={formData.arom?.WRIST?.[label]?.left || ''}
+                onChange={handleNestedInputChange}
+                placeholder="..."
+              />
+            </td>
+            <td className="border border-black px-2 py-1">
+              <input
+                type="text"
+                name={`arom.WRIST.${label}.pain_left`}
+                className="w-full px-1 py-0.5 border-none text-center outline-none"
+                value={formData.arom?.WRIST?.[label]?.pain_left || ''}
+                onChange={handleNestedInputChange}
+                placeholder="..."
+              />
+            </td>
+            {/* RIGHT SIDE */}
+            <td className="border border-black px-2 py-1">
+              <input
+                type="text"
+                name={`arom.WRIST.${label}.wnl_right`}
+                className="w-full px-1 py-0.5 border-none text-center outline-none"
+                value={formData.arom?.WRIST?.[label]?.wnl_right || ''}
+                onChange={handleNestedInputChange}
+                placeholder="..."
+              />
+            </td>
+            <td className="border border-black px-2 py-1">
+              <input
+                type="text"
+                name={`arom.WRIST.${label}.right`}
+                className="w-full px-1 py-0.5 border-none text-center outline-none"
+                value={formData.arom?.WRIST?.[label]?.right || ''}
+                onChange={handleNestedInputChange}
+                placeholder="..."
+              />
+            </td>
+            <td className="border border-black px-2 py-1">
+              <input
+                type="text"
+                name={`arom.WRIST.${label}.pain_right`}
+                className="w-full px-1 py-0.5 border-none text-center outline-none"
+                value={formData.arom?.WRIST?.[label]?.pain_right || ''}
+                onChange={handleNestedInputChange}
+                placeholder="..."
+              />
+            </td>
           </tr>
         ))}
       </tbody>
@@ -1658,15 +1948,26 @@ const handleNestedInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         {["Tinel’s", "Finkelstein’s", "Phalen’s", "Reverse Phalen’s"].map(test => (
           <tr key={test}>
             <td className="border border-black px-2 py-1">{test}</td>
-            {[...Array(2)].map((_, i) => (
-              <td key={i} className="border border-black px-2 py-1">
-                <input
-                  type="text"
-                  className="w-full px-1 py-0.5 border-none text-center outline-none"
-                  placeholder="..."
-                />
-              </td>
-            ))}
+            <td className="border border-black px-2 py-1">
+              <input
+                type="text"
+                name={`ortho.${test}.left`}
+                className="w-full px-1 py-0.5 border-none text-center outline-none"
+                value={formData.ortho?.[test]?.left || ''}
+                onChange={handleNestedInputChange}
+                placeholder="..."
+              />
+            </td>
+            <td className="border border-black px-2 py-1">
+              <input
+                type="text"
+                name={`ortho.${test}.right`}
+                className="w-full px-1 py-0.5 border-none text-center outline-none"
+                value={formData.ortho?.[test]?.right || ''}
+                onChange={handleNestedInputChange}
+                placeholder="..."
+              />
+            </td>
           </tr>
         ))}
       </tbody>
@@ -1685,9 +1986,14 @@ const handleNestedInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
       'Thenar',
       'Hypothenar',
       'Forearm',
-    ].map((label, idx) => (
-      <label key={idx} className="inline-flex items-center">
-        <input type="checkbox" className="mr-1" />
+    ].map(label => (
+      <label key={label} className="inline-flex items-center">
+        <input
+          type="checkbox"
+          className="mr-1"
+          checked={Array.isArray(formData.tenderness?.wrist) && formData.tenderness.wrist.includes(label)}
+          onChange={e => handleTendernessSpasmChange('wrist', 'tenderness', label, e.target.checked)}
+        />
         {label}
       </label>
     ))}
@@ -1696,9 +2002,14 @@ const handleNestedInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
   {/* SPASM */}
   <div className="mt-2 flex flex-wrap gap-4">
     <strong className="mr-2">SPASM</strong>
-    {['Hypothenar', 'Thenar'].map((label, idx) => (
-      <label key={idx} className="inline-flex items-center">
-        <input type="checkbox" className="mr-1" />
+    {['Hypothenar', 'Thenar'].map(label => (
+      <label key={label} className="inline-flex items-center">
+        <input
+          type="checkbox"
+          className="mr-1"
+          checked={Array.isArray(formData.spasm?.wrist) && formData.spasm.wrist.includes(label)}
+          onChange={e => handleTendernessSpasmChange('wrist', 'spasm', label, e.target.checked)}
+        />
         {label}
       </label>
     ))}
@@ -1741,15 +2052,68 @@ const handleNestedInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
           <tr key={label}>
             <td className="border border-black px-2 py-1">{label}</td>
             <td className="border border-black px-2 py-1">{nl}</td>
-            {[...Array(6)].map((_, i) => (
-              <td key={i} className="border border-black px-2 py-1">
-                <input
-                  type="text"
-                  className="w-full px-1 py-0.5 text-center outline-none"
-                  placeholder="..."
-                />
-              </td>
-            ))}
+            {/* LEFT SIDE */}
+            <td className="border border-black px-2 py-1">
+              <input
+                type="text"
+                name={`arom.HAND.${label}.wnl_left`}
+                className="w-full px-1 py-0.5 text-center outline-none"
+                value={formData.arom?.HAND?.[label]?.wnl_left || ''}
+                onChange={handleNestedInputChange}
+                placeholder="..."
+              />
+            </td>
+            <td className="border border-black px-2 py-1">
+              <input
+                type="text"
+                name={`arom.HAND.${label}.left`}
+                className="w-full px-1 py-0.5 text-center outline-none"
+                value={formData.arom?.HAND?.[label]?.left || ''}
+                onChange={handleNestedInputChange}
+                placeholder="..."
+              />
+            </td>
+            <td className="border border-black px-2 py-1">
+              <input
+                type="text"
+                name={`arom.HAND.${label}.pain_left`}
+                className="w-full px-1 py-0.5 text-center outline-none"
+                value={formData.arom?.HAND?.[label]?.pain_left || ''}
+                onChange={handleNestedInputChange}
+                placeholder="..."
+              />
+            </td>
+            {/* RIGHT SIDE */}
+            <td className="border border-black px-2 py-1">
+              <input
+                type="text"
+                name={`arom.HAND.${label}.wnl_right`}
+                className="w-full px-1 py-0.5 text-center outline-none"
+                value={formData.arom?.HAND?.[label]?.wnl_right || ''}
+                onChange={handleNestedInputChange}
+                placeholder="..."
+              />
+            </td>
+            <td className="border border-black px-2 py-1">
+              <input
+                type="text"
+                name={`arom.HAND.${label}.right`}
+                className="w-full px-1 py-0.5 text-center outline-none"
+                value={formData.arom?.HAND?.[label]?.right || ''}
+                onChange={handleNestedInputChange}
+                placeholder="..."
+              />
+            </td>
+            <td className="border border-black px-2 py-1">
+              <input
+                type="text"
+                name={`arom.HAND.${label}.pain_right`}
+                className="w-full px-1 py-0.5 text-center outline-none"
+                value={formData.arom?.HAND?.[label]?.pain_right || ''}
+                onChange={handleNestedInputChange}
+                placeholder="..."
+              />
+            </td>
           </tr>
         ))}
       </tbody>
@@ -1765,18 +2129,29 @@ const handleNestedInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         </tr>
       </thead>
       <tbody>
-        {['', '', '', '', '', '', '', 'Grind Test', "Finkelstein’s", '', ''].map((test, index) => (
-          <tr key={index}>
+        {['Grind Test', "Finkelstein’s"].map(test => (
+          <tr key={test}>
             <td className="border border-black px-2 py-1">{test}</td>
-            {[...Array(2)].map((_, i) => (
-              <td key={i} className="border border-black px-2 py-1">
-                <input
-                  type="text"
-                  className="w-full px-1 py-0.5 text-center outline-none"
-                  placeholder="..."
-                />
-              </td>
-            ))}
+            <td className="border border-black px-2 py-1">
+              <input
+                type="text"
+                name={`ortho.${test}.left`}
+                className="w-full px-1 py-0.5 text-center outline-none"
+                value={formData.ortho?.[test]?.left || ''}
+                onChange={handleNestedInputChange}
+                placeholder="..."
+              />
+            </td>
+            <td className="border border-black px-2 py-1">
+              <input
+                type="text"
+                name={`ortho.${test}.right`}
+                className="w-full px-1 py-0.5 text-center outline-none"
+                value={formData.ortho?.[test]?.right || ''}
+                onChange={handleNestedInputChange}
+                placeholder="..."
+              />
+            </td>
           </tr>
         ))}
       </tbody>
@@ -1789,9 +2164,14 @@ const handleNestedInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     {[
       '1ˢᵗ Metacarpal', '2ⁿᵈ Metacarpal', '3ʳᵈ Metacarpal', '4ᵗʰ Metacarpal', '5ᵗʰ Metacarpal',
       '1ˢᵗ Phalanexes', '2ⁿᵈ Phalanexes', '3ʳᵈ Phalanexes', '4ᵗʰ Phalanexes', '5ᵗʰ Phalanexes'
-    ].map((label, idx) => (
-      <label key={idx} className="inline-flex items-center">
-        <input type="checkbox" className="mr-1" />
+    ].map(label => (
+      <label key={label} className="inline-flex items-center">
+        <input
+          type="checkbox"
+          className="mr-1"
+          checked={Array.isArray(formData.tenderness?.hand) && formData.tenderness.hand.includes(label)}
+          onChange={e => handleTendernessSpasmChange('hand', 'tenderness', label, e.target.checked)}
+        />
         {label}
       </label>
     ))}
@@ -1800,9 +2180,14 @@ const handleNestedInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
   {/* SPASM Section */}
   <div className="mt-2 flex flex-wrap gap-4">
     <strong className="mr-2">SPASM</strong>
-    {['Forearm', 'Thenar', 'Hypothenar'].map((label, idx) => (
-      <label key={idx} className="inline-flex items-center">
-        <input type="checkbox" className="mr-1" />
+    {['Forearm', 'Thenar', 'Hypothenar'].map(label => (
+      <label key={label} className="inline-flex items-center">
+        <input
+          type="checkbox"
+          className="mr-1"
+          checked={Array.isArray(formData.spasm?.hand) && formData.spasm.hand.includes(label)}
+          onChange={e => handleTendernessSpasmChange('hand', 'spasm', label, e.target.checked)}
+        />
         {label}
       </label>
     ))}
@@ -1833,19 +2218,72 @@ const handleNestedInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
           ['EXT ROTATION', '30°'],
           ['ABDUCTION', '30°'],
           ['ADDUCTION', '0°']
-        ].map(([label, nl], idx) => (
-          <tr key={idx}>
+        ].map(([label, nl]) => (
+          <tr key={label}>
             <td className="border border-black px-2 py-1">{label}</td>
             <td className="border border-black px-2 py-1">{nl}</td>
-            {[...Array(6)].map((_, i) => (
-              <td key={i} className="border border-black px-2 py-1">
-                <input
-                  type="text"
-                  className="w-full px-1 py-0.5 text-center outline-none"
-                  placeholder="..."
-                />
-              </td>
-            ))}
+            {/* LEFT SIDE */}
+            <td className="border border-black px-2 py-1">
+              <input
+                type="text"
+                name={`arom.HIP.${label}.wnl_left`}
+                className="w-full px-1 py-0.5 text-center outline-none"
+                value={formData.arom?.HIP?.[label]?.wnl_left || ''}
+                onChange={handleNestedInputChange}
+                placeholder="..."
+              />
+            </td>
+            <td className="border border-black px-2 py-1">
+              <input
+                type="text"
+                name={`arom.HIP.${label}.left`}
+                className="w-full px-1 py-0.5 text-center outline-none"
+                value={formData.arom?.HIP?.[label]?.left || ''}
+                onChange={handleNestedInputChange}
+                placeholder="..."
+              />
+            </td>
+            <td className="border border-black px-2 py-1">
+              <input
+                type="text"
+                name={`arom.HIP.${label}.pain_left`}
+                className="w-full px-1 py-0.5 text-center outline-none"
+                value={formData.arom?.HIP?.[label]?.pain_left || ''}
+                onChange={handleNestedInputChange}
+                placeholder="..."
+              />
+            </td>
+            {/* RIGHT SIDE */}
+            <td className="border border-black px-2 py-1">
+              <input
+                type="text"
+                name={`arom.HIP.${label}.wnl_right`}
+                className="w-full px-1 py-0.5 text-center outline-none"
+                value={formData.arom?.HIP?.[label]?.wnl_right || ''}
+                onChange={handleNestedInputChange}
+                placeholder="..."
+              />
+            </td>
+            <td className="border border-black px-2 py-1">
+              <input
+                type="text"
+                name={`arom.HIP.${label}.right`}
+                className="w-full px-1 py-0.5 text-center outline-none"
+                value={formData.arom?.HIP?.[label]?.right || ''}
+                onChange={handleNestedInputChange}
+                placeholder="..."
+              />
+            </td>
+            <td className="border border-black px-2 py-1">
+              <input
+                type="text"
+                name={`arom.HIP.${label}.pain_right`}
+                className="w-full px-1 py-0.5 text-center outline-none"
+                value={formData.arom?.HIP?.[label]?.pain_right || ''}
+                onChange={handleNestedInputChange}
+                placeholder="..."
+              />
+            </td>
           </tr>
         ))}
       </tbody>
@@ -1867,18 +2305,29 @@ const handleNestedInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
           'Trendelenburg’s',
           'Iliac Compression',
           'Hip Circumduction'
-        ].map((label, idx) => (
-          <tr key={idx}>
-            <td className="border border-black px-2 py-1">{label}</td>
-            {[...Array(2)].map((_, i) => (
-              <td key={i} className="border border-black px-2 py-1">
-                <input
-                  type="text"
-                  className="w-full px-1 py-0.5 text-center outline-none"
-                  placeholder="..."
-                />
-              </td>
-            ))}
+        ].map(test => (
+          <tr key={test}>
+            <td className="border border-black px-2 py-1">{test}</td>
+            <td className="border border-black px-2 py-1">
+              <input
+                type="text"
+                name={`ortho.${test}.left`}
+                className="w-full px-1 py-0.5 text-center outline-none"
+                value={formData.ortho?.[test]?.left || ''}
+                onChange={handleNestedInputChange}
+                placeholder="..."
+              />
+            </td>
+            <td className="border border-black px-2 py-1">
+              <input
+                type="text"
+                name={`ortho.${test}.right`}
+                className="w-full px-1 py-0.5 text-center outline-none"
+                value={formData.ortho?.[test]?.right || ''}
+                onChange={handleNestedInputChange}
+                placeholder="..."
+              />
+            </td>
           </tr>
         ))}
       </tbody>
@@ -1888,9 +2337,14 @@ const handleNestedInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
   {/* TENDERNESS Section */}
   <div className="mt-6 flex flex-wrap gap-4">
     <strong className="mr-2">TENDERNESS</strong>
-    {['Anterior', 'Posterior', 'Lateral', 'Sacroiliac Joint', 'Buttock'].map((label, idx) => (
-      <label key={idx} className="inline-flex items-center">
-        <input type="checkbox" className="mr-1" />
+    {['Anterior', 'Posterior', 'Lateral', 'Sacroiliac Joint', 'Buttock'].map(label => (
+      <label key={label} className="inline-flex items-center">
+        <input
+          type="checkbox"
+          className="mr-1"
+          checked={Array.isArray(formData.tenderness?.hip) && formData.tenderness.hip.includes(label)}
+          onChange={e => handleTendernessSpasmChange('hip', 'tenderness', label, e.target.checked)}
+        />
         {label}
       </label>
     ))}
@@ -1899,9 +2353,14 @@ const handleNestedInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
   {/* SPASM Section */}
   <div className="mt-2 flex flex-wrap gap-4">
     <strong className="mr-2">SPASM</strong>
-    {['Quadriceps', 'TFL', 'Hamstrings', 'Buttock'].map((label, idx) => (
-      <label key={idx} className="inline-flex items-center">
-        <input type="checkbox" className="mr-1" />
+    {['Quadriceps', 'TFL', 'Hamstrings', 'Buttock'].map(label => (
+      <label key={label} className="inline-flex items-center">
+        <input
+          type="checkbox"
+          className="mr-1"
+          checked={Array.isArray(formData.spasm?.hip) && formData.spasm.hip.includes(label)}
+          onChange={e => handleTendernessSpasmChange('hip', 'spasm', label, e.target.checked)}
+        />
         {label}
       </label>
     ))}
@@ -1930,19 +2389,72 @@ const handleNestedInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
           ['EXTENSION', '0°'],
           ['EXT ROTATION', '30°'],
           ['INT ROTATION', '10°']
-        ].map(([label, nl], idx) => (
-          <tr key={idx}>
+        ].map(([label, nl]) => (
+          <tr key={label}>
             <td className="border border-black px-2 py-1">{label}</td>
             <td className="border border-black px-2 py-1">{nl}</td>
-            {[...Array(6)].map((_, i) => (
-              <td key={i} className="border border-black px-2 py-1">
-                <input
-                  type="text"
-                  className="w-full px-1 py-0.5 text-center outline-none"
-                  placeholder="..."
-                />
-              </td>
-            ))}
+            {/* LEFT SIDE */}
+            <td className="border border-black px-2 py-1">
+              <input
+                type="text"
+                name={`arom.KNEE.${label}.wnl_left`}
+                className="w-full px-1 py-0.5 text-center outline-none"
+                value={formData.arom?.KNEE?.[label]?.wnl_left || ''}
+                onChange={handleNestedInputChange}
+                placeholder="..."
+              />
+            </td>
+            <td className="border border-black px-2 py-1">
+              <input
+                type="text"
+                name={`arom.KNEE.${label}.left`}
+                className="w-full px-1 py-0.5 text-center outline-none"
+                value={formData.arom?.KNEE?.[label]?.left || ''}
+                onChange={handleNestedInputChange}
+                placeholder="..."
+              />
+            </td>
+            <td className="border border-black px-2 py-1">
+              <input
+                type="text"
+                name={`arom.KNEE.${label}.pain_left`}
+                className="w-full px-1 py-0.5 text-center outline-none"
+                value={formData.arom?.KNEE?.[label]?.pain_left || ''}
+                onChange={handleNestedInputChange}
+                placeholder="..."
+              />
+            </td>
+            {/* RIGHT SIDE */}
+            <td className="border border-black px-2 py-1">
+              <input
+                type="text"
+                name={`arom.KNEE.${label}.wnl_right`}
+                className="w-full px-1 py-0.5 text-center outline-none"
+                value={formData.arom?.KNEE?.[label]?.wnl_right || ''}
+                onChange={handleNestedInputChange}
+                placeholder="..."
+              />
+            </td>
+            <td className="border border-black px-2 py-1">
+              <input
+                type="text"
+                name={`arom.KNEE.${label}.right`}
+                className="w-full px-1 py-0.5 text-center outline-none"
+                value={formData.arom?.KNEE?.[label]?.right || ''}
+                onChange={handleNestedInputChange}
+                placeholder="..."
+              />
+            </td>
+            <td className="border border-black px-2 py-1">
+              <input
+                type="text"
+                name={`arom.KNEE.${label}.pain_right`}
+                className="w-full px-1 py-0.5 text-center outline-none"
+                value={formData.arom?.KNEE?.[label]?.pain_right || ''}
+                onChange={handleNestedInputChange}
+                placeholder="..."
+              />
+            </td>
           </tr>
         ))}
       </tbody>
@@ -1960,22 +2472,43 @@ const handleNestedInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
       </thead>
       <tbody>
         {[
-          'McMurray’s/Bounce Home',
-          'Varus/Valgus',
-          'Anterior Drawer',
-          'Posterior Drawer'
-        ].map((label, idx) => (
-          <tr key={idx}>
-            <td className="border border-black px-2 py-1">{label}</td>
-            {[...Array(3)].map((_, i) => (
-              <td key={i} className="border border-black px-2 py-1">
-                <input
-                  type="text"
-                  className="w-full px-1 py-0.5 text-center outline-none"
-                  placeholder="..."
-                />
-              </td>
-            ))}
+  "McMurray's/Bounce Home",
+  'Varus/Valgus',
+  'Anterior Drawer',
+  'Posterior Drawer'
+].map(test => (
+          <tr key={test}>
+            <td className="border border-black px-2 py-1">{test}</td>
+            <td className="border border-black px-2 py-1">
+              <input
+                type="text"
+                name={`ortho.${test}.left`}
+                className="w-full px-1 py-0.5 text-center outline-none"
+                value={formData.ortho?.[test]?.left || ''}
+                onChange={handleNestedInputChange}
+                placeholder="..."
+              />
+            </td>
+            <td className="border border-black px-2 py-1">
+              <input
+                type="text"
+                name={`ortho.${test}.right`}
+                className="w-full px-1 py-0.5 text-center outline-none"
+                value={formData.ortho?.[test]?.right || ''}
+                onChange={handleNestedInputChange}
+                placeholder="..."
+              />
+            </td>
+            <td className="border border-black px-2 py-1">
+              <input
+                type="text"
+                name={`ortho.${test}.lig_laxity`}
+                className="w-full px-1 py-0.5 text-center outline-none"
+                value={formData.ortho?.[test]?.lig_laxity || ''}
+                onChange={handleNestedInputChange}
+                placeholder="..."
+              />
+            </td>
           </tr>
         ))}
       </tbody>
@@ -1988,9 +2521,14 @@ const handleNestedInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     {[
       'Ant', 'Post', 'Med', 'Lat',
       'Sup Patella', 'Inf Patella', 'Popliteal Fossa'
-    ].map((label, idx) => (
-      <label key={idx} className="inline-flex items-center">
-        <input type="checkbox" className="mr-1" />
+    ].map(label => (
+      <label key={label} className="inline-flex items-center">
+        <input
+          type="checkbox"
+          className="mr-1"
+          checked={Array.isArray(formData.tenderness?.knee) && formData.tenderness.knee.includes(label)}
+          onChange={e => handleTendernessSpasmChange('knee', 'tenderness', label, e.target.checked)}
+        />
         {label}
       </label>
     ))}
@@ -2002,9 +2540,14 @@ const handleNestedInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     {[
       'Ant', 'Post', 'Med', 'Lat',
       'Quadriceps', 'TFL', 'Hamstrings'
-    ].map((label, idx) => (
-      <label key={idx} className="inline-flex items-center">
-        <input type="checkbox" className="mr-1" />
+    ].map(label => (
+      <label key={label} className="inline-flex items-center">
+        <input
+          type="checkbox"
+          className="mr-1"
+          checked={Array.isArray(formData.spasm?.knee) && formData.spasm.knee.includes(label)}
+          onChange={e => handleTendernessSpasmChange('knee', 'spasm', label, e.target.checked)}
+        />
         {label}
       </label>
     ))}
@@ -2033,19 +2576,72 @@ const handleNestedInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
           ['DORSIFLEXION', '20°'],
           ['INVERSION', '30°'],
           ['EVERSION', '20°']
-        ].map(([label, nl], idx) => (
-          <tr key={idx}>
+        ].map(([label, nl]) => (
+          <tr key={label}>
             <td className="border border-black px-2 py-1">{label}</td>
             <td className="border border-black px-2 py-1">{nl}</td>
-            {[...Array(6)].map((_, i) => (
-              <td key={i} className="border border-black px-2 py-1">
-                <input
-                  type="text"
-                  placeholder="..."
-                  className="w-full px-1 py-0.5 text-center outline-none"
-                />
-              </td>
-            ))}
+            {/* LEFT SIDE */}
+            <td className="border border-black px-2 py-1">
+              <input
+                type="text"
+                name={`arom.ANKLE.${label}.wnl_left`}
+                className="w-full px-1 py-0.5 text-center outline-none"
+                value={formData.arom?.ANKLE?.[label]?.wnl_left || ''}
+                onChange={handleNestedInputChange}
+                placeholder="..."
+              />
+            </td>
+            <td className="border border-black px-2 py-1">
+              <input
+                type="text"
+                name={`arom.ANKLE.${label}.left`}
+                className="w-full px-1 py-0.5 text-center outline-none"
+                value={formData.arom?.ANKLE?.[label]?.left || ''}
+                onChange={handleNestedInputChange}
+                placeholder="..."
+              />
+            </td>
+            <td className="border border-black px-2 py-1">
+              <input
+                type="text"
+                name={`arom.ANKLE.${label}.pain_left`}
+                className="w-full px-1 py-0.5 text-center outline-none"
+                value={formData.arom?.ANKLE?.[label]?.pain_left || ''}
+                onChange={handleNestedInputChange}
+                placeholder="..."
+              />
+            </td>
+            {/* RIGHT SIDE */}
+            <td className="border border-black px-2 py-1">
+              <input
+                type="text"
+                name={`arom.ANKLE.${label}.wnl_right`}
+                className="w-full px-1 py-0.5 text-center outline-none"
+                value={formData.arom?.ANKLE?.[label]?.wnl_right || ''}
+                onChange={handleNestedInputChange}
+                placeholder="..."
+              />
+            </td>
+            <td className="border border-black px-2 py-1">
+              <input
+                type="text"
+                name={`arom.ANKLE.${label}.right`}
+                className="w-full px-1 py-0.5 text-center outline-none"
+                value={formData.arom?.ANKLE?.[label]?.right || ''}
+                onChange={handleNestedInputChange}
+                placeholder="..."
+              />
+            </td>
+            <td className="border border-black px-2 py-1">
+              <input
+                type="text"
+                name={`arom.ANKLE.${label}.pain_right`}
+                className="w-full px-1 py-0.5 text-center outline-none"
+                value={formData.arom?.ANKLE?.[label]?.pain_right || ''}
+                onChange={handleNestedInputChange}
+                placeholder="..."
+              />
+            </td>
           </tr>
         ))}
       </tbody>
@@ -2062,18 +2658,39 @@ const handleNestedInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         </tr>
       </thead>
       <tbody>
-        {['Varus/Valgus', 'Anterior Drawer', 'Posterior Drawer'].map((label, idx) => (
-          <tr key={idx}>
-            <td className="border border-black px-2 py-1">{label}</td>
-            {[...Array(3)].map((_, i) => (
-              <td key={i} className="border border-black px-2 py-1">
-                <input
-                  type="text"
-                  placeholder="..."
-                  className="w-full px-1 py-0.5 text-center outline-none"
-                />
-              </td>
-            ))}
+        {['Varus/Valgus', 'Anterior Drawer', 'Posterior Drawer'].map(test => (
+          <tr key={test}>
+            <td className="border border-black px-2 py-1">{test}</td>
+            <td className="border border-black px-2 py-1">
+              <input
+                type="text"
+                name={`ortho.${test}.left`}
+                className="w-full px-1 py-0.5 text-center outline-none"
+                value={formData.ortho?.[test]?.left || ''}
+                onChange={handleNestedInputChange}
+                placeholder="..."
+              />
+            </td>
+            <td className="border border-black px-2 py-1">
+              <input
+                type="text"
+                name={`ortho.${test}.right`}
+                className="w-full px-1 py-0.5 text-center outline-none"
+                value={formData.ortho?.[test]?.right || ''}
+                onChange={handleNestedInputChange}
+                placeholder="..."
+              />
+            </td>
+            <td className="border border-black px-2 py-1">
+              <input
+                type="text"
+                name={`ortho.${test}.lig_laxity`}
+                className="w-full px-1 py-0.5 text-center outline-none"
+                value={formData.ortho?.[test]?.lig_laxity || ''}
+                onChange={handleNestedInputChange}
+                placeholder="..."
+              />
+            </td>
           </tr>
         ))}
       </tbody>
@@ -2087,9 +2704,14 @@ const handleNestedInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
       'Ant', 'Post', 'Med', 'Lat',
       'Ant Talofibular Lig', 'Med Malleolus', 'Lat Malleolus',
       'Med Heel', 'Lat Heel', 'Achilles'
-    ].map((label, idx) => (
-      <label key={idx} className="inline-flex items-center">
-        <input type="checkbox" className="mr-1" />
+    ].map(label => (
+      <label key={label} className="inline-flex items-center">
+        <input
+          type="checkbox"
+          className="mr-1"
+          checked={Array.isArray(formData.tenderness?.ankle) && formData.tenderness.ankle.includes(label)}
+          onChange={e => handleTendernessSpasmChange('ankle', 'tenderness', label, e.target.checked)}
+        />
         {label}
       </label>
     ))}
@@ -2098,9 +2720,14 @@ const handleNestedInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
   {/* SPASM Section */}
   <div className="mt-2 flex flex-wrap gap-4">
     <strong className="mr-2">SPASM</strong>
-    {['Calf', 'Distal Leg'].map((label, idx) => (
-      <label key={idx} className="inline-flex items-center">
-        <input type="checkbox" className="mr-1" />
+    {['Calf', 'Distal Leg'].map(label => (
+      <label key={label} className="inline-flex items-center">
+        <input
+          type="checkbox"
+          className="mr-1"
+          checked={Array.isArray(formData.spasm?.ankle) && formData.spasm.ankle.includes(label)}
+          onChange={e => handleTendernessSpasmChange('ankle', 'spasm', label, e.target.checked)}
+        />
         {label}
       </label>
     ))}
@@ -2131,19 +2758,72 @@ const handleNestedInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
           ['MTP EXTENSION', '80°'],
           ['PIP FLEXION', '50°'],
           ['PIP EXTENSION', '0°']
-        ].map(([label, nl], idx) => (
-          <tr key={idx}>
+        ].map(([label, nl]) => (
+          <tr key={label}>
             <td className="border border-black px-2 py-1">{label}</td>
             <td className="border border-black px-2 py-1">{nl}</td>
-            {[...Array(6)].map((_, i) => (
-              <td key={i} className="border border-black px-2 py-1">
-                <input
-                  type="text"
-                  placeholder="..."
-                  className="w-full px-1 py-0.5 text-center outline-none"
-                />
-              </td>
-            ))}
+            {/* LEFT SIDE */}
+            <td className="border border-black px-2 py-1">
+              <input
+                type="text"
+                name={`arom.FOOT.${label}.wnl_left`}
+                className="w-full px-1 py-0.5 text-center outline-none"
+                value={formData.arom?.FOOT?.[label]?.wnl_left || ''}
+                onChange={handleNestedInputChange}
+                placeholder="..."
+              />
+            </td>
+            <td className="border border-black px-2 py-1">
+              <input
+                type="text"
+                name={`arom.FOOT.${label}.left`}
+                className="w-full px-1 py-0.5 text-center outline-none"
+                value={formData.arom?.FOOT?.[label]?.left || ''}
+                onChange={handleNestedInputChange}
+                placeholder="..."
+              />
+            </td>
+            <td className="border border-black px-2 py-1">
+              <input
+                type="text"
+                name={`arom.FOOT.${label}.pain_left`}
+                className="w-full px-1 py-0.5 text-center outline-none"
+                value={formData.arom?.FOOT?.[label]?.pain_left || ''}
+                onChange={handleNestedInputChange}
+                placeholder="..."
+              />
+            </td>
+            {/* RIGHT SIDE */}
+            <td className="border border-black px-2 py-1">
+              <input
+                type="text"
+                name={`arom.FOOT.${label}.wnl_right`}
+                className="w-full px-1 py-0.5 text-center outline-none"
+                value={formData.arom?.FOOT?.[label]?.wnl_right || ''}
+                onChange={handleNestedInputChange}
+                placeholder="..."
+              />
+            </td>
+            <td className="border border-black px-2 py-1">
+              <input
+                type="text"
+                name={`arom.FOOT.${label}.right`}
+                className="w-full px-1 py-0.5 text-center outline-none"
+                value={formData.arom?.FOOT?.[label]?.right || ''}
+                onChange={handleNestedInputChange}
+                placeholder="..."
+              />
+            </td>
+            <td className="border border-black px-2 py-1">
+              <input
+                type="text"
+                name={`arom.FOOT.${label}.pain_right`}
+                className="w-full px-1 py-0.5 text-center outline-none"
+                value={formData.arom?.FOOT?.[label]?.pain_right || ''}
+                onChange={handleNestedInputChange}
+                placeholder="..."
+              />
+            </td>
           </tr>
         ))}
       </tbody>
@@ -2164,6 +2844,9 @@ const handleNestedInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
             <td className="border border-black px-2 py-1">
               <input
                 type="text"
+                name={`ortho.FOOT.test${idx + 1}.name`}
+                value={formData.ortho?.FOOT?.[`test${idx + 1}`]?.name || ''}
+                onChange={handleNestedInputChange}
                 placeholder="Test name"
                 className="w-full px-1 py-0.5 text-center outline-none"
               />
@@ -2172,6 +2855,9 @@ const handleNestedInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
               <td key={i} className="border border-black px-2 py-1">
                 <input
                   type="text"
+                  name={`ortho.FOOT.test${idx + 1}.${i === 0 ? 'left' : 'right'}`}
+                  value={formData.ortho?.FOOT?.[`test${idx + 1}`]?.[i === 0 ? 'left' : 'right'] || ''}
+                  onChange={handleNestedInputChange}
                   placeholder="..."
                   className="w-full px-1 py-0.5 text-center outline-none"
                 />
@@ -2190,9 +2876,14 @@ const handleNestedInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
       'Calcaneus', 'Talus', 'Navicular', 'Cuboid', 'Cuneiform(s)',
       '1ˢᵗ Metatarsal', '2ⁿᵈ Metatarsal', '3ʳᵈ Metatarsal', '4ᵗʰ Metatarsal', '5ᵗʰ Metatarsal',
       '1ˢᵗ Phalanges', '2ⁿᵈ Phalanges', '3ʳᵈ Phalanges', '4ᵗʰ Phalanges', '5ᵗʰ Phalanges'
-    ].map((label, idx) => (
-      <label key={idx} className="inline-flex items-center">
-        <input type="checkbox" className="mr-1" />
+    ].map(label => (
+      <label key={label} className="inline-flex items-center">
+        <input
+          type="checkbox"
+          className="mr-1"
+          checked={Array.isArray(formData.tenderness?.foot) && formData.tenderness.foot.includes(label)}
+          onChange={e => handleTendernessSpasmChange('foot', 'tenderness', label, e.target.checked)}
+        />
         {label}
       </label>
     ))}
@@ -2201,9 +2892,14 @@ const handleNestedInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
   {/* SPASM Section */}
   <div className="mt-2 flex flex-wrap gap-4">
     <strong className="mr-2">SPASM</strong>
-    {['Mid Foot', 'Hind Foot'].map((label, idx) => (
-      <label key={idx} className="inline-flex items-center">
-        <input type="checkbox" className="mr-1" />
+    {['Mid Foot', 'Hind Foot'].map(label => (
+      <label key={label} className="inline-flex items-center">
+        <input
+          type="checkbox"
+          className="mr-1"
+          checked={Array.isArray(formData.spasm?.foot) && formData.spasm.foot.includes(label)}
+          onChange={e => handleTendernessSpasmChange('foot', 'spasm', label, e.target.checked)}
+        />
         {label}
       </label>
     ))}
