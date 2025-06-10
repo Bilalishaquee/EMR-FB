@@ -12,11 +12,11 @@ const validateInitialVisit = (req, res, next) => {
 
   if (visitType !== 'initial') return next();
 
-  if (!chiefComplaint || !patient || !doctor) {
+  if (!patient || !doctor) {
     return res.status(400).json({ 
       message: 'Missing required fields', 
-      required: ['chiefComplaint', 'patient', 'doctor'] 
-    });
+      required: ['patient', 'doctor'] 
+    });    
   }
 
   next();

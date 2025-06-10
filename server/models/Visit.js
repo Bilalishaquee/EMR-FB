@@ -30,16 +30,82 @@ const Visit = mongoose.model('Visit', baseVisitSchema);
 
 const initialVisitSchema = new mongoose.Schema({
   chiefComplaint: { type: String, required: true },
+
+  vitals: {
+    height: String,
+    weight: String,
+    temp: String,
+    bp: String,
+    pulse: String
+  },
+
+  grip: {
+    right1: String,
+    right2: String,
+    right3: String,
+    left1: String,
+    left2: String,
+    left3: String
+  },
+
+  appearance: [String],
+  appearanceOther: String,
+
+  orientation: {
+    timePlacePerson: Boolean,
+    otherChecked: Boolean,
+    other: String
+  },
+
+  posture: [String],
+  gait: [String],
+  gaitDevice: String,
+
+  dtr: [String],
+  dtrOther: String,
+
+  dermatomes: [String],
+  dermatomesHypoArea: String,
+  dermatomesHyperArea: String,
+
+  muscleStrength: [String],
+  strength: {
+    C5: String,
+    C6: String,
+    C7: String,
+    C8: String,
+    T1: String,
+    L2: String,
+    L3: String,
+    L4: String,
+    L5: String,
+    S1: String
+  },
+
+  oriented: Boolean,
+  neuroNote: String,
+  coordination: Boolean,
+  romberg: [String],
+  rombergNotes: String,
+  pronatorDrift: String,
+  neuroTests: [String],
+  walkTests: [String],
+  painLocation: [String],
+  radiatingTo: String,
+
+  jointDysfunction: [String],
+  jointOther: String,
+
   chiropracticAdjustment: [String],
-  chiropracticOther: [String],
+  chiropracticOther: String,
   acupuncture: [String],
-  acupunctureOther: [String], 
+  acupunctureOther: String,
   physiotherapy: [String],
   rehabilitationExercises: [String],
-  
+
   durationFrequency: {
-    timesPerWeek: { type: Number },
-    reEvalInWeeks: { type: Number }
+    timesPerWeek: Number,
+    reEvalInWeeks: Number
   },
 
   referrals: [String],
@@ -54,20 +120,52 @@ const initialVisitSchema = new mongoose.Schema({
   nerveStudy: [String],
 
   restrictions: {
-    avoidActivityWeeks: { type: Number },
-    liftingLimitLbs: { type: Number },
-    avoidProlongedSitting: { type: Boolean }
+    avoidActivityWeeks: Number,
+    liftingLimitLbs: Number,
+    avoidProlongedSitting: Boolean
   },
 
   disabilityDuration: String,
+  otherNotes: String,
 
-  // ✅ Only keep this one
-  otherNotes: { type: String },
+  arom: mongoose.Schema.Types.Mixed,  // object of { bodyPart: { movement: { wnl, exam, pain } } }
+  ortho: mongoose.Schema.Types.Mixed, // object of { test: { left, right, ligLaxity? } }
+
+  tenderness: mongoose.Schema.Types.Mixed, // object of { region: [labels] }
+  spasm: mongoose.Schema.Types.Mixed,      // object of { region: [labels] }
+
+  lumbarTouchingToesMovement: {
+    pain: Boolean,
+    painTS: Boolean,
+    painLS: Boolean,
+    acceleration: Boolean,
+    accelerationTSPain: Boolean,
+    accelerationLSPain: Boolean,
+    deceleration: Boolean,
+    decelerationTSPain: Boolean,
+    decelerationLSPain: Boolean,
+    gowersSign: Boolean,
+    gowersSignTS: Boolean,
+    gowersSignLS: Boolean,
+    deviatingLumbopelvicRhythm: Boolean,
+    deviatingFlexionRotation: Boolean,
+    deviatingExtensionRotation: Boolean
+  },
+
+  cervicalAROMCheckmarks: {
+    pain: Boolean,
+    poorCoordination: Boolean,
+    abnormalJointPlay: Boolean,
+    motionNotSmooth: Boolean,
+    hypomobilityThoracic: Boolean,
+    fatigueHoldingHead: Boolean
+  },
 
   patient: { type: mongoose.Schema.Types.ObjectId, ref: 'Patient', required: true },
   doctor: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true }
 
 }, { timestamps: true });
+
 
 
 
