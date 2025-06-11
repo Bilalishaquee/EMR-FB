@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../../contexts/AuthContext';
-import { ArrowLeft, Save } from 'lucide-react';
+import { ArrowLeft, Save, X } from 'lucide-react';
 
 interface Patient {
   _id: string;
@@ -68,6 +68,9 @@ const FollowupVisitForm: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [autoSaveStatus, setAutoSaveStatus] = useState('');
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [initialVisitData, setInitialVisitData] = useState<any>(null);
+  const [hasLoadedVisits, setHasLoadedVisits] = useState(false);
 
   // Use the defined interface for the state type
   const [formData, setFormData] = useState<FollowupVisitFormData>({
@@ -114,35 +117,59 @@ const FollowupVisitForm: React.FC = () => {
   const [localFormData, setLocalFormData] = useState<string | null>(null);
 
   useEffect(() => {
+    let isMounted = true;
+    
     const fetchData = async () => {
       setIsLoading(true);
       try {
         // Fetch patient data
-        const patientResponse = await axios.get(`http://localhost:5000/api/patients/${id}`);
-        setPatient(patientResponse.data);
+        const [patientResponse, visitsResponse] = await Promise.all([
+          axios.get(`http://localhost:5000/api/patients/${id}`),
+          axios.get(`http://localhost:5000/api/patients/${id}/visits`)
+        ]);
         
-        // Fetch previous visits
-        const visitsResponse = await axios.get(`http://localhost:5000/api/patients/${id}/visits`);
-        setPreviousVisits(visitsResponse.data);
-        
-        // Check for locally saved form data
-        const savedData = localStorage.getItem(`followupVisit_${id}`);
-        if (savedData) {
-          setLocalFormData(savedData);
+        if (isMounted) {
+          setPatient(patientResponse.data);
+          
+          // Debug: Log the raw visits data
+          console.log('Raw visits data:', visitsResponse.data);
+          
+          // Filter to only include initial visits - check both __t and visitType
+          const initialVisits = visitsResponse.data.filter((visit: any) => {
+            const isInitialVisit = visit.__t === 'InitialVisit' || visit.visitType === 'initial';
+            console.log('Visit:', visit._id, 'Type:', visit.__t, 'VisitType:', visit.visitType, 'Is Initial:', isInitialVisit);
+            return isInitialVisit;
+          });
+          
+          console.log('Filtered initial visits:', initialVisits);
+          setPreviousVisits(initialVisits);
+          setHasLoadedVisits(true);
+          
+          // Check for locally saved form data
+          const savedData = localStorage.getItem(`followupVisit_${id}`);
+          if (savedData) {
+            setLocalFormData(savedData);
+          }
         }
       } catch (error) {
         console.error('Error fetching data:', error);
+        if (isMounted) {
+          setHasLoadedVisits(true); // Ensure we don't get stuck in loading state
+        }
       } finally {
-        setIsLoading(false);
+        if (isMounted) {
+          setIsLoading(false);
+        }
       }
     };
     
     fetchData();
     
-    // Clean up auto-save timer on unmount
+    // Clean up
     return () => {
+      isMounted = false;
       if (autoSaveTimer) {
-        clearTimeout(autoSaveTimer as any); // Cast to any for compatibility
+        clearTimeout(autoSaveTimer as any);
       }
     };
   }, [id]);
@@ -245,6 +272,31 @@ const FollowupVisitForm: React.FC = () => {
     }
   };
 
+  const fetchInitialVisitData = async (visitId: string) => {
+    try {
+      // Get the visit details using the correct endpoint
+      const response = await axios.get(`http://localhost:5000/api/patients/visits/${visitId}`);
+      
+      // Check if it's an initial visit (check both __t and visitType for compatibility)
+      const isInitialVisit = response.data.__t === 'InitialVisit' || response.data.visitType === 'initial';
+      
+      if (!isInitialVisit) {
+        console.error('Visit data:', response.data);
+        throw new Error(`Selected visit is not an initial visit. Visit type: ${response.data.visitType}, __t: ${response.data.__t}`);
+      }
+      
+      setInitialVisitData(response.data);
+      setIsModalOpen(true);
+    } catch (err: any) {
+      console.error('Error fetching initial visit data:', err);
+      if (err.response?.status === 404) {
+        alert('Visit not found. The selected visit may have been deleted.');
+      } else {
+        alert(`Failed to load initial visit data: ${err.message}. Please ensure the selected visit is an initial visit.`);
+      }
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-full">
@@ -274,32 +326,12 @@ const FollowupVisitForm: React.FC = () => {
     );
   }
 
-  if (previousVisits.length === 0) {
+  // Show loading state while fetching data
+  if (isLoading || !hasLoadedVisits) {
     return (
       <div className="container mx-auto px-4 py-8">
-        <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4">
-          <div className="flex">
-            <div className="ml-3">
-              <p className="text-sm text-yellow-700">
-                No previous visits found for this patient. Please create an initial visit first.
-              </p>
-            </div>
-          </div>
-        </div>
-        <div className="mt-4 flex space-x-4">
-          <button
-            onClick={() => navigate(`/patients/${id}`)}
-            className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-          >
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Patient
-          </button>
-          <button
-            onClick={() => navigate(`/patients/${id}/visits/initial`)}
-            className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-          >
-            Create Initial Visit
-          </button>
+        <div className="flex items-center justify-center h-64">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
         </div>
       </div>
     );
@@ -323,7 +355,51 @@ const FollowupVisitForm: React.FC = () => {
             Date: {new Date().toLocaleDateString()}
           </p>
         </div>
+        {formData.previousVisit && (
+          <button
+            type="button"
+            onClick={() => fetchInitialVisitData(formData.previousVisit)}
+            className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md ml-4"
+          >
+            View Initial Visit Data
+          </button>
+        )}
       </div>
+
+      {/* Modal */}
+      {isModalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-xl font-semibold">Initial Visit Data</h3>
+              <button
+                onClick={() => setIsModalOpen(false)}
+                className="text-gray-500 hover:text-gray-700"
+                aria-label="Close modal"
+              >
+                <X size={24} />
+              </button>
+            </div>
+            <div className="bg-gray-50 p-4 rounded-md">
+              {initialVisitData ? (
+                <pre className="whitespace-pre-wrap text-sm overflow-auto">
+                  {JSON.stringify(initialVisitData, null, 2)}
+                </pre>
+              ) : (
+                <p>Loading initial visit data...</p>
+              )}
+            </div>
+            <div className="mt-4 flex justify-end">
+              <button
+                onClick={() => setIsModalOpen(false)}
+                className="px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-md"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {localFormData && (
         <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-6">
@@ -363,12 +439,12 @@ const FollowupVisitForm: React.FC = () => {
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="bg-white shadow-md rounded-lg p-6">
+      <form onSubmit={handleSubmit} className="bg-white shadow-md rounded-lg p-6 relative">
         <div className="space-y-6">
           {/* Previous Visit Selection */}
-          <div>
+          <div className="mb-6">
             <label htmlFor="previousVisit" className="block text-sm font-medium text-gray-700 mb-1">
-              Previous Visit*
+              Previous Visit
             </label>
             <select
               id="previousVisit"
@@ -377,14 +453,32 @@ const FollowupVisitForm: React.FC = () => {
               onChange={handleChange}
               required
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+              disabled={previousVisits.length === 0}
             >
-              <option value="">Select previous visit</option>
+              <option value="">
+                {previousVisits.length > 0 
+                  ? "Select previous visit" 
+                  : "No initial visits found"}
+              </option>
               {previousVisits.map((visit) => (
                 <option key={visit._id} value={visit._id}>
-                  {new Date(visit.date).toLocaleDateString()} - {visit.__t === 'initial' ? 'Initial Visit' : 'Follow-up'}
+                  {visit.__t || 'Visit'} - {new Date(visit.date).toLocaleDateString()} ({visit.visitType || 'no type'})
                 </option>
               ))}
             </select>
+            {previousVisits.length === 0 && (
+              <div className="mt-4 flex items-center">
+                <p className="text-sm text-gray-600 mr-4">
+                  Please create an initial visit first.
+                </p>
+                <button
+                  onClick={() => navigate(`/patients/${id}/visits/initial`)}
+                  className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                >
+                  Create Initial Visit
+                </button>
+              </div>
+            )}
           </div>
 
           {/* Areas */}
