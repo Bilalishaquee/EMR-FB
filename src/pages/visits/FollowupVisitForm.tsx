@@ -473,14 +473,13 @@ const [isOrthoModalOpen, setIsOrthoModalOpen] = useState(false);
           </button>
         )}
       </div>
-
-    {/* Modal */}
 {/* Modal */}
 {isModalOpen && (
   <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-    <div className="bg-white rounded-lg p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto">
-      <div className="flex justify-between items-center mb-4">
-        <h3 className="text-xl font-semibold text-gray-800">Initial Visit Data</h3>
+    {/* Modal */}
+    <div className="bg-white rounded-lg p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto shadow-lg">
+      <div className="flex justify-between items-center mb-6 border-b pb-4">
+        <h3 className="text-2xl font-semibold text-gray-800">Initial Visit Data</h3>
         <button
           onClick={() => setIsModalOpen(false)}
           className="text-gray-500 hover:text-gray-700"
@@ -490,109 +489,140 @@ const [isOrthoModalOpen, setIsOrthoModalOpen] = useState(false);
         </button>
       </div>
 
-      <div className="bg-gray-50 p-4 rounded-md space-y-6">
+      {/* Displaying Initial Visit Data */}
+      <div className="space-y-6">
 
         {/* Displaying Chief Complaint */}
         <div className="section">
-          <h4 className="font-bold text-lg text-gray-800">Chief Complaint:</h4>
-          <p>{initialVisitData?.chiefComplaint || 'N/A'}</p>
+          <h4 className="font-semibold text-lg text-gray-800 mb-2">Chief Complaint:</h4>
+          <p className="text-gray-700">{initialVisitData?.chiefComplaint || 'N/A'}</p>
         </div>
 
         {/* Displaying Vitals */}
         <div className="section">
-          <h4 className="font-bold text-lg text-gray-800">Vitals:</h4>
-          <p><span className="font-semibold">Height:</span> {initialVisitData?.vitals?.height || 'N/A'}</p>
-          <p><span className="font-semibold">Weight:</span> {initialVisitData?.vitals?.weight || 'N/A'}</p>
-          <p><span className="font-semibold">Temperature:</span> {initialVisitData?.vitals?.temp || 'N/A'}</p>
-          <p><span className="font-semibold">Blood Pressure:</span> {initialVisitData?.vitals?.bp || 'N/A'}</p>
-          <p><span className="font-semibold">Pulse:</span> {initialVisitData?.vitals?.pulse || 'N/A'}</p>
+          <h4 className="font-semibold text-lg text-gray-800 mb-2">Vitals:</h4>
+          <div className="grid grid-cols-2 gap-4">
+            <p><span className="font-medium">Height:</span> {initialVisitData?.vitals?.height || 'N/A'}</p>
+            <p><span className="font-medium">Weight:</span> {initialVisitData?.vitals?.weight || 'N/A'}</p>
+            <p><span className="font-medium">Temperature:</span> {initialVisitData?.vitals?.temp || 'N/A'}</p>
+            <p><span className="font-medium">Blood Pressure:</span> {initialVisitData?.vitals?.bp || 'N/A'}</p>
+            <p><span className="font-medium">Pulse:</span> {initialVisitData?.vitals?.pulse || 'N/A'}</p>
+          </div>
         </div>
 
         {/* Displaying Grip Strength */}
         <div className="section">
-          <h4 className="font-bold text-lg text-gray-800">Grip Strength:</h4>
-          <p><span className="font-semibold">Right Hand 1:</span> {initialVisitData?.grip?.right1 || 'N/A'}</p>
-          <p><span className="font-semibold">Right Hand 2:</span> {initialVisitData?.grip?.right2 || 'N/A'}</p>
-          <p><span className="font-semibold">Right Hand 3:</span> {initialVisitData?.grip?.right3 || 'N/A'}</p>
-          <p><span className="font-semibold">Left Hand 1:</span> {initialVisitData?.grip?.left1 || 'N/A'}</p>
-          <p><span className="font-semibold">Left Hand 2:</span> {initialVisitData?.grip?.left2 || 'N/A'}</p>
-          <p><span className="font-semibold">Left Hand 3:</span> {initialVisitData?.grip?.left3 || 'N/A'}</p>
+          <h4 className="font-semibold text-lg text-gray-800 mb-2">Grip Strength:</h4>
+          <div className="grid grid-cols-2 gap-4">
+            {['right1', 'right2', 'right3', 'left1', 'left2', 'left3'].map((key, idx) => (
+              <p key={idx}><span className="font-medium">{key.replace('right', 'Right Hand').replace('left', 'Left Hand')}:</span> {initialVisitData?.grip?.[key] || 'N/A'}</p>
+            ))}
+          </div>
         </div>
 
         {/* Displaying Appearance */}
         <div className="section">
-          <h4 className="font-bold text-lg text-gray-800">Appearance:</h4>
-          {initialVisitData?.appearance?.length > 0 ? initialVisitData.appearance.join(', ') : 'N/A'}
+          <h4 className="font-semibold text-lg text-gray-800 mb-2">Appearance:</h4>
+          <p className="text-gray-700">{initialVisitData?.appearance?.length > 0 ? initialVisitData.appearance.join(', ') : 'N/A'}</p>
         </div>
 
         {/* Displaying Posture */}
         <div className="section">
-          <h4 className="font-bold text-lg text-gray-800">Posture:</h4>
-          {initialVisitData?.posture?.length > 0 ? initialVisitData.posture.join(', ') : 'N/A'}
+          <h4 className="font-semibold text-lg text-gray-800 mb-2">Posture:</h4>
+          <p className="text-gray-700">{initialVisitData?.posture?.length > 0 ? initialVisitData.posture.join(', ') : 'N/A'}</p>
         </div>
 
         {/* Displaying Gait */}
         <div className="section">
-          <h4 className="font-bold text-lg text-gray-800">Gait:</h4>
-          {initialVisitData?.gait?.length > 0 ? initialVisitData.gait.join(', ') : 'N/A'}
+          <h4 className="font-semibold text-lg text-gray-800 mb-2">Gait:</h4>
+          <p className="text-gray-700">{initialVisitData?.gait?.length > 0 ? initialVisitData.gait.join(', ') : 'N/A'}</p>
         </div>
 
         {/* Displaying Strength */}
         <div className="section">
-          <h4 className="font-bold text-lg text-gray-800">Strength:</h4>
-          <p><span className="font-semibold">C5:</span> {initialVisitData?.strength?.C5 || 'N/A'}</p>
-          <p><span className="font-semibold">C6:</span> {initialVisitData?.strength?.C6 || 'N/A'}</p>
-          <p><span className="font-semibold">C7:</span> {initialVisitData?.strength?.C7 || 'N/A'}</p>
-          <p><span className="font-semibold">C8:</span> {initialVisitData?.strength?.C8 || 'N/A'}</p>
-          <p><span className="font-semibold">T1:</span> {initialVisitData?.strength?.T1 || 'N/A'}</p>
-          <p><span className="font-semibold">L2:</span> {initialVisitData?.strength?.L2 || 'N/A'}</p>
-          <p><span className="font-semibold">L3:</span> {initialVisitData?.strength?.L3 || 'N/A'}</p>
-          <p><span className="font-semibold">L4:</span> {initialVisitData?.strength?.L4 || 'N/A'}</p>
-          <p><span className="font-semibold">L5:</span> {initialVisitData?.strength?.L5 || 'N/A'}</p>
-          <p><span className="font-semibold">S1:</span> {initialVisitData?.strength?.S1 || 'N/A'}</p>
+          <h4 className="font-semibold text-lg text-gray-800 mb-2">Strength:</h4>
+          <div className="grid grid-cols-2 gap-4">
+            {Object.keys(initialVisitData?.strength || {}).map((key) => (
+              <p key={key}><span className="font-medium">{key}:</span> {initialVisitData?.strength?.[key] || 'N/A'}</p>
+            ))}
+          </div>
         </div>
 
         {/* Displaying Range of Motion (ROM) */}
         <div className="section">
-          <h4 className="font-bold text-lg text-gray-800">Range of Motion (ROM):</h4>
-          {initialVisitData?.arom ? (
-            Object.keys(initialVisitData.arom).map((region) => (
-              <div key={region}>
-                <h5 className="font-semibold text-md text-gray-700">{region}</h5>
-                {Object.keys(initialVisitData.arom[region]).map((movement) => (
-                  <p key={movement}><span className="font-semibold">{movement}:</span> {JSON.stringify(initialVisitData.arom[region][movement], null, 2)}</p>
-                ))}
-              </div>
-            ))
-          ) : (
-            <p>N/A</p>
-          )}
-        </div>
+  <h4 className="font-semibold text-lg text-gray-800 mb-2">Range of Motion (ROM):</h4>
+  {initialVisitData?.arom ? (
+    Object.keys(initialVisitData.arom).map((region) => (
+      <div key={region} className="mb-6">
+        <h5 className="font-semibold text-md text-gray-700 mb-4">{region}</h5>
+        
+        <table className="min-w-full table-auto border-collapse">
+          <thead>
+            <tr>
+              <th className="border-b p-2 text-left text-sm font-medium text-gray-700">Movement</th>
+              <th className="border-b p-2 text-left text-sm font-medium text-gray-700">Left</th>
+              <th className="border-b p-2 text-left text-sm font-medium text-gray-700">Right</th>
+              <th className="border-b p-2 text-left text-sm font-medium text-gray-700">Ligament Laxity</th>
+            </tr>
+          </thead>
+          <tbody>
+            {Object.entries(initialVisitData.arom[region]).map(([movement, movementData]) => (
+              <tr key={movement}>
+                <td className="border-b p-2 text-sm text-gray-600">{movement}</td>
+                <td className="border-b p-2 text-sm text-gray-600">{movementData.left || 'N/A'}</td>
+                <td className="border-b p-2 text-sm text-gray-600">{movementData.right || 'N/A'}</td>
+                <td className="border-b p-2 text-sm text-gray-600">{movementData.ligLaxity || 'N/A'}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    ))
+  ) : (
+    <p className="text-gray-700">N/A</p>
+  )}
+</div>
+
 
         {/* Displaying Orthopedic Tests */}
         <div className="section">
-          <h4 className="font-bold text-lg text-gray-800">Orthopedic Tests:</h4>
-          {initialVisitData?.ortho ? (
-            Object.keys(initialVisitData.ortho).map((test) => (
-              <div key={test}>
-                <p><span className="font-semibold">{test} (Left):</span> {initialVisitData.ortho[test].left || 'N/A'}</p>
-                <p><span className="font-semibold">{test} (Right):</span> {initialVisitData.ortho[test].right || 'N/A'}</p>
-                {initialVisitData.ortho[test].ligLaxity && (
-                  <p><span className="font-semibold">{test} (Ligament Laxity):</span> {initialVisitData.ortho[test].ligLaxity}</p>
-                )}
-              </div>
-            ))
-          ) : (
-            <p>N/A</p>
-          )}
-        </div>
+  <h4 className="font-semibold text-lg text-gray-800 mb-4">Orthopedic Tests:</h4>
+  {initialVisitData?.ortho ? (
+    <div className="overflow-x-auto">
+      <table className="min-w-full table-auto border-collapse">
+        <thead>
+          <tr>
+            <th className="border-b p-4 text-left text-sm font-medium text-gray-700">Test</th>
+            <th className="border-b p-4 text-left text-sm font-medium text-gray-700">Left</th>
+            <th className="border-b p-4 text-left text-sm font-medium text-gray-700">Right</th>
+            <th className="border-b p-4 text-left text-sm font-medium text-gray-700">Ligament Laxity</th>
+          </tr>
+        </thead>
+        <tbody>
+          {Object.keys(initialVisitData.ortho).map((test) => (
+            <tr key={test}>
+              <td className="border-b p-4 text-sm text-gray-600">{test} (Left)</td>
+              <td className="border-b p-4 text-sm text-gray-600">{initialVisitData.ortho[test].left || 'N/A'}</td>
+              <td className="border-b p-4 text-sm text-gray-600">{initialVisitData.ortho[test].right || 'N/A'}</td>
+              <td className="border-b p-4 text-sm text-gray-600">{initialVisitData.ortho[test].ligLaxity || 'N/A'}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  ) : (
+    <p>N/A</p>
+  )}
+</div>
+
+
 
         {/* Displaying Tenderness */}
         <div className="section">
-          <h4 className="font-bold text-lg text-gray-800">Tenderness:</h4>
+          <h4 className="font-semibold text-lg text-gray-800 mb-2">Tenderness:</h4>
           {initialVisitData?.tenderness ? (
             Object.keys(initialVisitData.tenderness).map((region) => (
-              <p key={region}><span className="font-semibold">{region}:</span> {initialVisitData.tenderness[region].join(', ')}</p>
+              <p key={region}><span className="font-medium">{region}:</span> {initialVisitData.tenderness[region].join(', ')}</p>
             ))
           ) : (
             <p>N/A</p>
@@ -601,10 +631,10 @@ const [isOrthoModalOpen, setIsOrthoModalOpen] = useState(false);
 
         {/* Displaying Spasm */}
         <div className="section">
-          <h4 className="font-bold text-lg text-gray-800">Spasm:</h4>
+          <h4 className="font-semibold text-lg text-gray-800 mb-2">Spasm:</h4>
           {initialVisitData?.spasm ? (
             Object.keys(initialVisitData.spasm).map((region) => (
-              <p key={region}><span className="font-semibold">{region}:</span> {initialVisitData.spasm[region].join(', ')}</p>
+              <p key={region}><span className="font-medium">{region}:</span> {initialVisitData.spasm[region].join(', ')}</p>
             ))
           ) : (
             <p>N/A</p>
@@ -613,11 +643,11 @@ const [isOrthoModalOpen, setIsOrthoModalOpen] = useState(false);
 
         {/* Displaying Lumbar Touching Toes Movement */}
         <div className="section">
-          <h4 className="font-bold text-lg text-gray-800">Lumbar Touching Toes Movement:</h4>
+          <h4 className="font-semibold text-lg text-gray-800 mb-2">Lumbar Touching Toes Movement:</h4>
           {initialVisitData?.lumbarTouchingToesMovement ? (
             Object.keys(initialVisitData.lumbarTouchingToesMovement).map((movement) => (
               <p key={movement}>
-                <span className="font-semibold">{movement}:</span> {initialVisitData.lumbarTouchingToesMovement[movement] ? 'Yes' : 'No'}
+                <span className="font-medium">{movement}:</span> {initialVisitData.lumbarTouchingToesMovement[movement] ? 'Yes' : 'No'}
               </p>
             ))
           ) : (
@@ -627,11 +657,11 @@ const [isOrthoModalOpen, setIsOrthoModalOpen] = useState(false);
 
         {/* Displaying Cervical AROM Checkmarks */}
         <div className="section">
-          <h4 className="font-bold text-lg text-gray-800">Cervical AROM Checkmarks:</h4>
+          <h4 className="font-semibold text-lg text-gray-800 mb-2">Cervical AROM Checkmarks:</h4>
           {initialVisitData?.cervicalAROMCheckmarks ? (
             Object.keys(initialVisitData.cervicalAROMCheckmarks).map((checkmark) => (
               <p key={checkmark}>
-                <span className="font-semibold">{checkmark}:</span> {initialVisitData.cervicalAROMCheckmarks[checkmark] ? 'Yes' : 'No'}
+                <span className="font-medium">{checkmark}:</span> {initialVisitData.cervicalAROMCheckmarks[checkmark] ? 'Yes' : 'No'}
               </p>
             ))
           ) : (
@@ -641,6 +671,7 @@ const [isOrthoModalOpen, setIsOrthoModalOpen] = useState(false);
 
       </div>
 
+      {/* Close Button */}
       <div className="mt-4 flex justify-end">
         <button
           onClick={() => setIsModalOpen(false)}
@@ -652,6 +683,7 @@ const [isOrthoModalOpen, setIsOrthoModalOpen] = useState(false);
     </div>
   </div>
 )}
+
 
 
 
