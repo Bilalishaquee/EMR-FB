@@ -55,8 +55,102 @@ interface FollowupVisitFormData {
     result: string;
   };
   homeCare: string;
+  homeCareSuggestions?: string;
   notes: string;
+
+  // ✅ ADD THIS to store modal-fetched auto data
+  fetchedData?: {
+    initialVisitData?: any;
+
+    musclePalpationData?: {
+      muscleStrength?: any;
+      strength?: any;
+      tenderness?: any;
+      spasm?: any;
+    };
+
+    orthoTestsData?: {
+      [region: string]: {
+        [testName: string]: {
+          left: string;
+          right: string;
+          ligLaxity: string;
+        };
+      };
+    };
+
+    aromData?: {
+      [region: string]: {
+        [movementName: string]: {
+          left: string;
+          right: string;
+          ligLaxity: string;
+        };
+      };
+    };
+
+    activitiesPainData?: {
+      chiropracticAdjustment: string[];
+      chiropracticOther: string;
+      acupuncture: string[];
+      acupunctureOther: string;
+      physiotherapy: string[];
+      rehabilitationExercises: string[];
+      durationFrequency: {
+        timesPerWeek: string;
+        reEvalInWeeks: string;
+      };
+      diagnosticUltrasound: string;
+      disabilityDuration: string;
+    };
+
+    treatmentListData?: {
+      chiropracticAdjustment: string[];
+      chiropracticOther: string;
+      acupuncture: string[];
+      acupunctureOther: string;
+      physiotherapy: string[];
+      rehabilitationExercises: string[];
+      durationFrequency: {
+        timesPerWeek: string;
+        reEvalInWeeks: string;
+      };
+      referrals: string[];
+      imaging: {
+        xray: string[];
+        mri: string[];
+        ct: string[];
+      };
+      diagnosticUltrasound: string;
+      nerveStudy: string[];
+      restrictions: {
+        avoidActivityWeeks: string;
+        liftingLimitLbs: string;
+        avoidProlongedSitting: boolean;
+      };
+      disabilityDuration: string;
+      otherNotes: string;
+    };
+
+    imagingData?: {
+      physiotherapy: string[];
+      rehabilitationExercises: string[];
+      durationFrequency: {
+        timesPerWeek: string;
+        reEvalInWeeks: string;
+      };
+      referrals: string[];
+      imaging: {
+        xray: string[];
+        mri: string[];
+        ct: string[];
+      };
+    };
+
+    homeCareSuggestions?: string;
+  };
 }
+
 
 const FollowupVisitForm: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -83,6 +177,8 @@ const [isImagingModalOpen, setIsImagingModalOpen] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [initialVisitData, setInitialVisitData] = useState<any>(null);
   const [hasLoadedVisits, setHasLoadedVisits] = useState(false);
+  const [homeCareSuggestions, setHomeCareSuggestions] = useState('');
+const [isHomeCareModalOpen, setIsHomeCareModalOpen] = useState(false);
 
   // Use the defined interface for the state type
   const [formData, setFormData] = useState<FollowupVisitFormData>({
@@ -146,12 +242,16 @@ const [isImagingModalOpen, setIsImagingModalOpen] = useState(false);
           // Debug: Log the raw visits data
           console.log('Raw visits data:', visitsResponse.data);
           
-          // Filter to only include initial visits - check both __t and visitType
-          const initialVisits = visitsResponse.data.filter((visit: any) => {
-            const isInitialVisit = visit.__t === 'InitialVisit' || visit.visitType === 'initial';
-            console.log('Visit:', visit._id, 'Type:', visit.__t, 'VisitType:', visit.visitType, 'Is Initial:', isInitialVisit);
-            return isInitialVisit;
-          });
+
+       // Include all visits and sort by date ascending
+const sortedVisits = visitsResponse.data
+.filter((visit: any) => !!visit.date) // Ensure each visit has a date
+.sort((a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+console.log('All sorted visits:', sortedVisits);
+
+setPreviousVisits(sortedVisits);
+
           
           console.log('Filtered initial visits:', initialVisits);
           setPreviousVisits(initialVisits);
@@ -191,17 +291,15 @@ const [isImagingModalOpen, setIsImagingModalOpen] = useState(false);
     if (!visitId) {
       console.error("Visit ID is missing.");
       alert("Please select a valid previous visit.");
-      return; // Prevent further execution if the visit ID is missing
+      return;
     }
   
     try {
       // Fetching the complete visit data
       const response = await axios.get(`http://localhost:5000/api/patients/visits/${visitId}`);
-      
-      // Assuming the response has the full visit data
       const visitData = response.data;
   
-      // Now filter only muscle-related data
+      // Extract only the relevant muscle-related fields
       const musclePalpationData = {
         muscleStrength: visitData.muscleStrength,
         strength: visitData.strength,
@@ -209,101 +307,124 @@ const [isImagingModalOpen, setIsImagingModalOpen] = useState(false);
         spasm: visitData.spasm,
       };
   
-      // Update state with the muscle-related data
+      // 1. Display in modal
       setMusclePalpationData(musclePalpationData);
-  
-      // Open the modal
       setIsMuscleModalOpen(true);
+  
+      // 2. Save in formData.fetchedData for DB submission
+      setFormData((prev) => ({
+        ...prev,
+        fetchedData: {
+          ...prev.fetchedData,
+          musclePalpationData,
+        },
+      }));
   
     } catch (error) {
       console.error("Error fetching muscle palpation data:", error);
       alert("Failed to load muscle palpation data.");
     }
-  };
+  };  
   
   const fetchOrthoTestsData = async (visitId: string) => {
     if (!visitId) {
       console.error("Visit ID is missing.");
       alert("Please select a valid previous visit.");
-      return; // Prevent further execution if the visit ID is missing
+      return;
     }
   
     try {
-      // Fetching the complete visit data
       const response = await axios.get(`http://localhost:5000/api/patients/visits/${visitId}`);
       const visitData = response.data;
   
-      // Safeguard against undefined visitData
       if (!visitData) {
         console.error("Visit data is missing.");
         alert("Failed to load visit data.");
         return;
       }
   
-      // Define the types for orthoTestsData and aromData
-      const orthoTestsData: { [region: string]: { [testName: string]: { left: string; right: string; ligLaxity: string } } } = visitData.ortho
+      // Extract and structure ortho tests data
+      const orthoTestsData: {
+        [region: string]: {
+          [testName: string]: { left: string; right: string; ligLaxity: string };
+        };
+      } = visitData.ortho
         ? Object.entries(visitData.ortho).reduce((acc, [testName, testResult]) => {
-            const region = testName.split(' ')[0]; // Assuming the region is part of the test name (e.g., "Cervical Compression")
-            
-            // Assert that testResult is an object with known properties
-            const { left, right, ligLaxity }: { left: string; right: string; ligLaxity: string } = testResult as { left: string; right: string; ligLaxity: string };
+            const region = testName.split(" ")[0];
+            const { left, right, ligLaxity } = testResult as {
+              left: string;
+              right: string;
+              ligLaxity: string;
+            };
   
             if (!acc[region]) acc[region] = {};
   
             acc[region][testName] = {
-              left: left || 'N/A', // Default to 'N/A' if 'left' is undefined
-              right: right || 'N/A', // Default to 'N/A' if 'right' is undefined
-              ligLaxity: ligLaxity || 'N/A', // Default to 'N/A' if 'ligLaxity' is undefined
+              left: left || "N/A",
+              right: right || "N/A",
+              ligLaxity: ligLaxity || "N/A",
             };
             return acc;
-          }, {} as { [region: string]: { [testName: string]: { left: string; right: string; ligLaxity: string } } })
-        : {}; // Default to empty object if `ortho` is undefined or null
+          }, {})
+        : {};
   
-      const aromData: { [region: string]: { [movementName: string]: { left: string; right: string; ligLaxity: string } } } = visitData.arom
+      // Extract and structure AROM data
+      const aromData: {
+        [region: string]: {
+          [movementName: string]: { left: string; right: string; ligLaxity: string };
+        };
+      } = visitData.arom
         ? Object.entries(visitData.arom).reduce((acc, [region, movements]) => {
             acc[region] = Object.entries(movements).reduce((movementAcc, [movementName, movementData]) => {
-              // Assert that movementData is an object with known properties
-              const { left, right, ligLaxity }: { left: string; right: string; ligLaxity: string } = movementData as { left: string; right: string; ligLaxity: string };
+              const { left, right, ligLaxity } = movementData as {
+                left: string;
+                right: string;
+                ligLaxity: string;
+              };
   
               movementAcc[movementName] = {
-                left: left || 'N/A', // Default to 'N/A' if 'left' is undefined
-                right: right || 'N/A', // Default to 'N/A' if 'right' is undefined
-                ligLaxity: ligLaxity || 'N/A', // Default to 'N/A' if 'ligLaxity' is undefined
+                left: left || "N/A",
+                right: right || "N/A",
+                ligLaxity: ligLaxity || "N/A",
               };
               return movementAcc;
             }, {});
             return acc;
-          }, {} as { [region: string]: { [movementName: string]: { left: string; right: string; ligLaxity: string } } })
-        : {}; // Default to empty object if `arom` is undefined or null
+          }, {})
+        : {};
   
-      // Update state with both Orthopedic tests and AROM data
+      // Update state for modal display
       setOrthoTestsData(orthoTestsData);
       setAromData(aromData);
-  
-      // Open the modal to display the data
       setIsOrthoModalOpen(true);
   
+      // ✅ Save in formData.fetchedData for backend persistence
+      setFormData((prev) => ({
+        ...prev,
+        fetchedData: {
+          ...prev.fetchedData,
+          orthoTestsData,
+          aromData,
+        },
+      }));
     } catch (error) {
       console.error("Error fetching orthopedic tests data:", error);
       alert("Failed to load orthopedic tests data.");
     }
-  };
+  };  
 
   const fetchTreatmentPlanData = async (visitId: string) => {
     if (!visitId) {
       console.error("Visit ID is missing.");
       alert("Please select a valid previous visit.");
-      return; // Prevent further execution if the visit ID is missing
+      return;
     }
   
     try {
-      // Fetching the complete visit data
       const response = await axios.get(`http://localhost:5000/api/patients/visits/${visitId}`);
-  
-      // Assuming the response has the full visit data
       const visitData = response.data;
   
-      // Now filter only treatment plan data
+      // Filter only treatment plan data
       const treatmentData = {
         chiropracticAdjustment: visitData.chiropracticAdjustment || [],
         chiropracticOther: visitData.chiropracticOther || '',
@@ -319,11 +440,18 @@ const [isImagingModalOpen, setIsImagingModalOpen] = useState(false);
         disabilityDuration: visitData.disabilityDuration || '',
       };
   
-      // Update state with treatment plan data
+      // Show in modal
       setActivitiesPainData(treatmentData);
-  
-      // Open the modal
       setIsActivitiesModalOpen(true);
+  
+      // ✅ Save to formData.fetchedData for backend submission
+      setFormData((prev) => ({
+        ...prev,
+        fetchedData: {
+          ...prev.fetchedData,
+          activitiesPainData: treatmentData,
+        },
+      }));
     } catch (error) {
       console.error("Error fetching treatment plan data:", error);
       alert("Failed to load treatment plan data.");
@@ -362,8 +490,18 @@ const [isImagingModalOpen, setIsImagingModalOpen] = useState(false);
         otherNotes: visitData.otherNotes || '',
       };
   
+      // Set for modal display
       setTreatmentListData(treatmentList);
       setIsTreatmentModalOpen(true);
+  
+      // ✅ Save in formData.fetchedData for backend persistence
+      setFormData((prev) => ({
+        ...prev,
+        fetchedData: {
+          ...prev.fetchedData,
+          treatmentListData: treatmentList,
+        },
+      }));
     } catch (error) {
       console.error("Error fetching treatment list:", error);
       alert("Failed to load treatment plan.");
@@ -396,14 +534,115 @@ const [isImagingModalOpen, setIsImagingModalOpen] = useState(false);
         },
       };
   
+      // Set modal data
       setImagingData(imagingAndSpecialistData);
       setIsImagingModalOpen(true);
+  
+      // ✅ Store in formData.fetchedData for backend submission
+      setFormData((prev) => ({
+        ...prev,
+        fetchedData: {
+          ...prev.fetchedData,
+          imagingData: imagingAndSpecialistData,
+        },
+      }));
     } catch (error) {
       console.error("Error fetching imaging and specialist data:", error);
       alert("Failed to load data.");
     }
   };
   
+  const handleHomeCareAI = async () => {
+    try {
+      const response = await fetch("https://api.deepseek.com/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: "Bearer sk-b2f10ae71f37484c83093c51b49d29bc", // 🔐 Replace with env variable in production
+        },
+        body: JSON.stringify({
+          model: "deepseek-chat",
+          messages: [
+            {
+              role: "system",
+              content: `
+  You are an experienced clinical therapist AI. Based on the provided musculoskeletal exam findings, orthopaedic assessment, range of motion, neurological status, and vitals — recommend personalized home care for recovery and prevention. Include:
+  
+  - Exercises (ROM, posture, rehab, flexibility)
+  - Ergonomic and daily routine advice
+  - Pain management tips (heat/ice, rest, movement)
+  - Specialist follow-up if needed
+  - Home safety or adaptive device tips if gait/device issues exist
+  
+  Respond clearly in bullet points.
+              `.trim(),
+            },
+            {
+              role: "user",
+              content: `Here is the full patient clinical data for generating home care suggestions:\n${JSON.stringify(formData, null, 2)}`
+            }
+          ]
+        }),
+      });
+  
+      const data = await response.json();
+      const aiText = data?.choices?.[0]?.message?.content || "No suggestions returned by AI.";
+  
+      // Show in modal
+      setHomeCareSuggestions(aiText);
+      setIsHomeCareModalOpen(true);
+  
+      // Store in both formData.homeCare and formData.fetchedData
+      setFormData((prev) => ({
+        ...prev,
+        homeCare: aiText,
+        fetchedData: {
+          ...prev.fetchedData,
+          homeCareSuggestions: aiText,
+        }
+      }));
+      
+    } catch (error) {
+      console.error("Error calling DeepSeek:", error);
+      alert("Failed to fetch AI suggestions.");
+    }
+  };
+
+  const fetchInitialVisitData = async (visitId: string) => {
+    try {
+      // Get the visit details using the correct endpoint
+      const response = await axios.get(`http://localhost:5000/api/patients/visits/${visitId}`);
+      
+      // Check if it's an initial visit (check both __t and visitType for compatibility)
+      const isInitialVisit = response.data.__t === 'InitialVisit' || response.data.visitType === 'initial';
+  
+      if (!isInitialVisit) {
+        console.error('Visit data:', response.data);
+        throw new Error(`Selected visit is not an initial visit. Visit type: ${response.data.visitType}, __t: ${response.data.__t}`);
+      }
+  
+      // Set modal display data
+      setInitialVisitData(response.data);
+      setIsModalOpen(true);
+  
+      // Save to formData.fetchedData for DB persistence
+      setFormData((prev) => ({
+        ...prev,
+        fetchedData: {
+          ...prev.fetchedData,
+          initialVisitData: response.data,
+        },
+      }));
+    } catch (err: any) {
+      console.error('Error fetching initial visit data:', err);
+      if (err.response?.status === 404) {
+        alert('Visit not found. The selected visit may have been deleted.');
+      } else {
+        alert(`Failed to load initial visit data: ${err.message}. Please ensure the selected visit is an initial visit.`);
+      }
+    }
+  };
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target;
     
@@ -499,31 +738,6 @@ const [isImagingModalOpen, setIsImagingModalOpen] = useState(false);
       alert('Failed to save visit. Please try again.');
     } finally {
       setIsSaving(false);
-    }
-  };
-
-  const fetchInitialVisitData = async (visitId: string) => {
-    try {
-      // Get the visit details using the correct endpoint
-      const response = await axios.get(`http://localhost:5000/api/patients/visits/${visitId}`);
-      
-      // Check if it's an initial visit (check both __t and visitType for compatibility)
-      const isInitialVisit = response.data.__t === 'InitialVisit' || response.data.visitType === 'initial';
-      
-      if (!isInitialVisit) {
-        console.error('Visit data:', response.data);
-        throw new Error(`Selected visit is not an initial visit. Visit type: ${response.data.visitType}, __t: ${response.data.__t}`);
-      }
-      
-      setInitialVisitData(response.data);
-      setIsModalOpen(true);
-    } catch (err: any) {
-      console.error('Error fetching initial visit data:', err);
-      if (err.response?.status === 404) {
-        alert('Visit not found. The selected visit may have been deleted.');
-      } else {
-        alert(`Failed to load initial visit data: ${err.message}. Please ensure the selected visit is an initial visit.`);
-      }
     }
   };
 
@@ -850,44 +1064,49 @@ const [isImagingModalOpen, setIsImagingModalOpen] = useState(false);
       <form onSubmit={handleSubmit} className="bg-white shadow-md rounded-lg p-6 relative">
         <div className="space-y-6">
           {/* Previous Visit Selection */}
-          <div className="mb-6">
-            <label htmlFor="previousVisit" className="block text-sm font-medium text-gray-700 mb-1">
-              Previous Visit
-            </label>
-            <select
-              id="previousVisit"
-              name="previousVisit"
-              value={formData.previousVisit}
-              onChange={handleChange}
-              required
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-              disabled={previousVisits.length === 0}
-            >
-              <option value="">
-                {previousVisits.length > 0 
-                  ? "Select previous visit" 
-                  : "No initial visits found"}
-              </option>
-              {previousVisits.map((visit) => (
-                <option key={visit._id} value={visit._id}>
-                  {visit.__t || 'Visit'} - {new Date(visit.date).toLocaleDateString()} ({visit.visitType || 'no type'})
-                </option>
-              ))}
-            </select>
-            {previousVisits.length === 0 && (
-              <div className="mt-4 flex items-center">
-                <p className="text-sm text-gray-600 mr-4">
-                  Please create an initial visit first.
-                </p>
-                <button
-                  onClick={() => navigate(`/patients/${id}/visits/initial`)}
-                  className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                >
-                  Create Initial Visit
-                </button>
-              </div>
-            )}
-          </div>
+<div className="mb-6">
+  <label htmlFor="previousVisit" className="block text-sm font-medium text-gray-700 mb-1">
+    Previous Visit
+  </label>
+  <select
+    id="previousVisit"
+    name="previousVisit"
+    value={formData.previousVisit}
+    onChange={handleChange}
+    required
+    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+    disabled={previousVisits.length === 0}
+  >
+    <option value="">
+      {previousVisits.length > 0 
+        ? "Select previous visit" 
+        : "No visits found"}
+    </option>
+
+    {/* Dynamically render all visit types */}
+    {previousVisits.map((visit) => (
+      <option key={visit._id} value={visit._id}>
+        {visit.__t || visit.visitType || 'Visit'} - {new Date(visit.date).toLocaleDateString()}
+      </option>
+    ))}
+  </select>
+
+  {/* If no visits, show CTA to create initial visit */}
+  {previousVisits.length === 0 && (
+    <div className="mt-4 flex items-center">
+      <p className="text-sm text-gray-600 mr-4">
+        Please create an initial visit first.
+      </p>
+      <button
+        onClick={() => navigate(`/patients/${id}/visits/initial`)}
+        className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+      >
+        Create Initial Visit
+      </button>
+    </div>
+  )}
+</div>
+
 
           {/* Areas */}
           <div>
@@ -1671,15 +1890,41 @@ List of tests specific for body part
           {/* Home Care */}
           <div>
             <label htmlFor="homeCare" className="block text-sm font-medium text-gray-700 mb-1">Home Care: </label>
-            <input
-              type="text"
-              id="homeCare"
-              name="homeCare"
-              value={formData.homeCare}
-              onChange={handleChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-              placeholder="List of home care"
-            />
+            <button
+  type="button"
+  onClick={handleHomeCareAI}
+  className="bg-white text-blue-600 font-medium underline hover:text-blue-800 focus:outline-none mt-2"
+>
+  Suggest Home Care (AI)
+</button>
+{isHomeCareModalOpen && (
+  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div className="bg-white rounded-lg p-6 w-full max-w-xl max-h-[90vh] overflow-y-auto">
+      <div className="flex justify-between items-center mb-4">
+        <h3 className="text-xl font-semibold text-gray-800">AI-Suggested Home Care</h3>
+        <button
+          onClick={() => setIsHomeCareModalOpen(false)}
+          className="text-gray-500 hover:text-gray-700"
+          aria-label="Close modal"
+        >
+          <X size={24} />
+        </button>
+      </div>
+      <div className="text-sm text-gray-700 whitespace-pre-line">
+        {homeCareSuggestions}
+      </div>
+      <div className="mt-4 flex justify-end">
+        <button
+          onClick={() => setIsHomeCareModalOpen(false)}
+          className="px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-md"
+        >
+          Close
+        </button>
+      </div>
+    </div>
+  </div>
+)}
+
           </div>
 
           {/* Additional Notes */}
