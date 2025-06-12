@@ -287,31 +287,141 @@ setPreviousVisits(sortedVisits);
   }, [id]);
 
 
-  const fetchMusclePalpationData = async (visitId: string) => {
-    if (!visitId) {
-      console.error("Visit ID is missing.");
-      alert("Please select a valid previous visit.");
-      return;
-    }
-  
+  const saveMusclePalpationData = async (visitId: string, data: any) => {
+    if (!visitId) return;
     try {
-      // Fetching the complete visit data
-      const response = await axios.get(`http://localhost:5000/api/patients/visits/${visitId}`);
-      const visitData = response.data;
+      await axios.put(`http://localhost:5000/api/patients/visits/${visitId}`, {
+        muscleStrength: data.muscleStrength,
+        strength: data.strength,
+        tenderness: data.tenderness,
+        spasm: data.spasm,
+      });
+      console.log("✅ Muscle data saved");
+    } catch (error) {
+      console.error("❌ Failed to save muscle data", error);
+    }
+  };
   
-      // Extract only the relevant muscle-related fields
-      const musclePalpationData = {
-        muscleStrength: visitData.muscleStrength,
-        strength: visitData.strength,
-        tenderness: visitData.tenderness,
-        spasm: visitData.spasm,
+  const saveOrthoTestsData = async (visitId: string, data: any, arom: any) => {
+    if (!visitId) return;
+    try {
+      await axios.put(`http://localhost:5000/api/patients/visits/${visitId}`, {
+        ortho: data,
+        arom: arom,
+      });
+      console.log("✅ Ortho tests data saved");
+    } catch (error) {
+      console.error("❌ Failed to save ortho tests data", error);
+    }
+  };
+  
+  const saveTreatmentPlanData = async (visitId: string, data: any) => {
+    if (!visitId) return;
+    try {
+      await axios.put(`http://localhost:5000/api/patients/visits/${visitId}`, {
+        chiropracticAdjustment: data.chiropracticAdjustment,
+        chiropracticOther: data.chiropracticOther,
+        acupuncture: data.acupuncture,
+        acupunctureOther: data.acupunctureOther,
+        physiotherapy: data.physiotherapy,
+        rehabilitationExercises: data.rehabilitationExercises,
+        durationFrequency: data.durationFrequency,
+        diagnosticUltrasound: data.diagnosticUltrasound,
+        disabilityDuration: data.disabilityDuration,
+      });
+      console.log("✅ Treatment plan data saved");
+    } catch (error) {
+      console.error("❌ Failed to save treatment plan data", error);
+    }
+  };
+  
+  const saveTreatmentListData = async (visitId: string, data: any) => {
+    if (!visitId) return;
+    try {
+      await axios.put(`http://localhost:5000/api/patients/visits/${visitId}`, {
+        chiropracticAdjustment: data.chiropracticAdjustment,
+        chiropracticOther: data.chiropracticOther,
+        acupuncture: data.acupuncture,
+        acupunctureOther: data.acupunctureOther,
+        physiotherapy: data.physiotherapy,
+        rehabilitationExercises: data.rehabilitationExercises,
+        durationFrequency: data.durationFrequency,
+        referrals: data.referrals,
+        imaging: data.imaging,
+        diagnosticUltrasound: data.diagnosticUltrasound,
+        nerveStudy: data.nerveStudy,
+        restrictions: data.restrictions,
+        disabilityDuration: data.disabilityDuration,
+        otherNotes: data.otherNotes,
+      });
+      console.log("✅ Treatment list data saved");
+    } catch (error) {
+      console.error("❌ Failed to save treatment list data", error);
+    }
+  };
+  
+  const saveImagingAndSpecialistData = async (visitId: string, data: any) => {
+    if (!visitId) return;
+    try {
+      await axios.put(`http://localhost:5000/api/patients/visits/${visitId}`, {
+        physiotherapy: data.physiotherapy,
+        rehabilitationExercises: data.rehabilitationExercises,
+        durationFrequency: data.durationFrequency,
+        referrals: data.referrals,
+        imaging: data.imaging,
+      });
+      console.log("✅ Imaging and specialist data saved");
+    } catch (error) {
+      console.error("❌ Failed to save imaging and specialist data", error);
+    }
+  };
+
+  const handleSave = async () => {
+    setIsSaving(true);
+    try {
+      const saveData = {
+        ...formData,
+        ...(formData.fetchedData || {}), // ⬅️ this line spreads fetched modal data into the main save body
       };
   
-      // 1. Display in modal
+      if (visitId) {
+        // PUT to update
+        await axios.put(`/api/visits/${visitId}`, saveData);
+      } else {
+        // POST to create
+        saveData.visitType = 'followup';
+        saveData.patient = patientId;
+        await axios.post('/api/visits', saveData);
+      }
+  
+      alert('Visit saved successfully!');
+      navigate(-1);
+    } catch (error) {
+      console.error('Error saving visit:', error);
+      alert('Failed to save visit.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+  
+  const fetchMusclePalpationData = async (visitId: string) => {
+    if (!visitId) return alert("Please select a valid previous visit.");
+  
+    try {
+      const res = await axios.get(`http://localhost:5000/api/patients/visits/${visitId}`);
+      const visit = res.data;
+  
+      // Check if data exists for followup or initial
+      const musclePalpationData = {
+        muscleStrength: visit.muscleStrength || [],
+        strength: visit.strength || {},
+        tenderness: visit.tenderness || {},
+        spasm: visit.spasm || {},
+      };
+  
       setMusclePalpationData(musclePalpationData);
       setIsMuscleModalOpen(true);
   
-      // 2. Save in formData.fetchedData for DB submission
       setFormData((prev) => ({
         ...prev,
         fetchedData: {
@@ -319,12 +429,11 @@ setPreviousVisits(sortedVisits);
           musclePalpationData,
         },
       }));
-  
     } catch (error) {
       console.error("Error fetching muscle palpation data:", error);
-      alert("Failed to load muscle palpation data.");
+      alert("Failed to load data.");
     }
-  };  
+  };
   
   const fetchOrthoTestsData = async (visitId: string) => {
     if (!visitId) {
@@ -702,12 +811,45 @@ setPreviousVisits(sortedVisits);
     
     try {
       // 1. Save the visit data
-      const response = await axios.post(`http://localhost:5000/api/visits`, {
-         ...formData,
-         patient: id, // Add patient ID
-         doctor: _user?._id, // Add doctor ID from auth context
-         visitType: 'followup' // Explicitly add visitType
-      });
+      const {
+        musclePalpationData,
+        orthoTestsData,
+        aromData,
+        activitiesPainData,
+        treatmentListData,
+        imagingData,
+        homeCareSuggestions
+      } = formData.fetchedData || {};
+      
+      const flattenedData = {
+        ...formData,
+      
+        // ✅ Muscle Palpation
+        ...musclePalpationData,
+      
+        // ✅ Ortho and AROM
+        ortho: orthoTestsData,
+        arom: aromData,
+      
+        // ✅ Activities & Treatment Plan
+        ...(activitiesPainData || {}),
+      
+        // ✅ Full Treatment Plan List
+        ...(treatmentListData || {}),
+      
+        // ✅ Imaging & Referrals
+        ...(imagingData || {}),
+      
+        // ✅ Home Care AI
+        homeCare: homeCareSuggestions || '',
+      
+        patient: id,
+        doctor: _user?._id,
+        visitType: 'followup'
+      };
+      
+      const response = await axios.post(`http://localhost:5000/api/visits`, flattenedData);
+      
       
       const savedVisitId = response.data.visit._id; // Assuming the saved visit ID is returned
 

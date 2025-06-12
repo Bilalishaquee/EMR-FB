@@ -169,49 +169,100 @@ const initialVisitSchema = new mongoose.Schema({
 
 
 
-// Follow-up Visit Schema
 const followupVisitSchema = new mongoose.Schema({
   previousVisit: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Visit',
     required: true
   },
-  // Fields based on EXAM FORM---REEVALUATION template
-  areas: { type: String },
-  areasImproving: { type: Boolean },
-  areasExacerbated: { type: Boolean },
-  areasSame: { type: Boolean },
-  musclePalpation: { type: String },
-  painRadiating: { type: String },
-  romWnlNoPain: { type: Boolean },
-  romWnlWithPain: { type: Boolean },
-  romImproved: { type: Boolean },
-  romDecreased: { type: Boolean },
-  romSame: { type: Boolean },
+
+  // Reevaluation Form Fields
+  areas: String,
+  areasImproving: Boolean,
+  areasExacerbated: Boolean,
+  areasSame: Boolean,
+  musclePalpation: String,
+  painRadiating: String,
+  romWnlNoPain: Boolean,
+  romWnlWithPain: Boolean,
+  romImproved: Boolean,
+  romDecreased: Boolean,
+  romSame: Boolean,
+
   orthos: {
-    tests: { type: String },
-    result: { type: String }
+    tests: String,
+    result: String
   },
-  activitiesCausePain: { type: String },
-  activitiesCausePainOther: { type: String },
+
+  activitiesCausePain: String,
+  activitiesCausePainOther: String,
+
   treatmentPlan: {
-    treatments: { type: String },
-    timesPerWeek: { type: String }
+    treatments: String,
+    timesPerWeek: String
   },
+
   overallResponse: {
-    improving: { type: Boolean },
-    worse: { type: Boolean },
-    same: { type: Boolean }
+    improving: Boolean,
+    worse: Boolean,
+    same: Boolean
   },
-  referrals: { type: String },
+
+  referrals: String,
+
   diagnosticStudy: {
-    study: { type: String },
-    bodyPart: { type: String },
-    result: { type: String }
+    study: String,
+    bodyPart: String,
+    result: String
   },
-  homeCare: { type: String },
-  // Notes field is in the base schema
-});
+
+  homeCare: String,
+
+  notes: String, // ⬅️ if not included in base schema, add it here
+
+  // ✅ ADDITIONS FOR MODAL-FETCHED DATA
+
+  // Muscle Palpation Modal
+  muscleStrength: [String],
+  strength: mongoose.Schema.Types.Mixed,
+  tenderness: mongoose.Schema.Types.Mixed,
+  spasm: mongoose.Schema.Types.Mixed,
+
+  // Ortho Tests Modal
+  ortho: mongoose.Schema.Types.Mixed,
+  arom: mongoose.Schema.Types.Mixed,
+
+  // Activities/Treatment Plan Modal
+  chiropracticAdjustment: [String],
+  chiropracticOther: String,
+  acupuncture: [String],
+  acupunctureOther: String,
+  physiotherapy: [String],
+  rehabilitationExercises: [String],
+  durationFrequency: {
+    timesPerWeek: String,
+    reEvalInWeeks: String
+  },
+  diagnosticUltrasound: String,
+  disabilityDuration: String,
+
+  // Treatment List Modal
+  nerveStudy: [String],
+  restrictions: {
+    avoidActivityWeeks: String,
+    liftingLimitLbs: String,
+    avoidProlongedSitting: Boolean
+  },
+  otherNotes: String,
+
+  // Imaging and Referrals Modal
+  imaging: {
+    xray: [String],
+    mri: [String],
+    ct: [String]
+  }
+
+}, { timestamps: true });
 
 
 // Discharge Visit Schema
