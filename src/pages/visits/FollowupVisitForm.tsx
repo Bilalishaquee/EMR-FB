@@ -67,6 +67,13 @@ const [isMuscleModalOpen, setIsMuscleModalOpen] = useState(false); // State for 
 const [isOrthoModalOpen, setIsOrthoModalOpen] = useState(false);
   const [orthoTestsData, setOrthoTestsData] = useState<any>({});
   const [aromData, setAromData] = useState<any>({});
+  const [activitiesPainData, setActivitiesPainData] = useState<string[]>([]);
+const [isActivitiesModalOpen, setIsActivitiesModalOpen] = useState(false);
+const [treatmentListData, setTreatmentListData] = useState<any>(null);
+const [isTreatmentModalOpen, setIsTreatmentModalOpen] = useState(false);
+const [imagingData, setImagingData] = useState<any>(null);
+const [isImagingModalOpen, setIsImagingModalOpen] = useState(false);
+
   
   const [patient, setPatient] = useState<Patient | null>(null);
   const [previousVisits, setPreviousVisits] = useState<Visit[]>([]);
@@ -279,6 +286,121 @@ const [isOrthoModalOpen, setIsOrthoModalOpen] = useState(false);
     } catch (error) {
       console.error("Error fetching orthopedic tests data:", error);
       alert("Failed to load orthopedic tests data.");
+    }
+  };
+
+  const fetchTreatmentPlanData = async (visitId: string) => {
+    if (!visitId) {
+      console.error("Visit ID is missing.");
+      alert("Please select a valid previous visit.");
+      return; // Prevent further execution if the visit ID is missing
+    }
+  
+    try {
+      // Fetching the complete visit data
+      const response = await axios.get(`http://localhost:5000/api/patients/visits/${visitId}`);
+  
+      // Assuming the response has the full visit data
+      const visitData = response.data;
+  
+      // Now filter only treatment plan data
+      const treatmentData = {
+        chiropracticAdjustment: visitData.chiropracticAdjustment || [],
+        chiropracticOther: visitData.chiropracticOther || '',
+        acupuncture: visitData.acupuncture || [],
+        acupunctureOther: visitData.acupunctureOther || '',
+        physiotherapy: visitData.physiotherapy || [],
+        rehabilitationExercises: visitData.rehabilitationExercises || [],
+        durationFrequency: visitData.durationFrequency || {
+          timesPerWeek: '',
+          reEvalInWeeks: '',
+        },
+        diagnosticUltrasound: visitData.diagnosticUltrasound || '',
+        disabilityDuration: visitData.disabilityDuration || '',
+      };
+  
+      // Update state with treatment plan data
+      setActivitiesPainData(treatmentData);
+  
+      // Open the modal
+      setIsActivitiesModalOpen(true);
+    } catch (error) {
+      console.error("Error fetching treatment plan data:", error);
+      alert("Failed to load treatment plan data.");
+    }
+  };
+  
+  const fetchTreatmentListData = async (visitId: string) => {
+    if (!visitId) {
+      console.error("Visit ID is missing.");
+      alert("Please select a valid previous visit.");
+      return;
+    }
+  
+    try {
+      const response = await axios.get(`http://localhost:5000/api/patients/visits/${visitId}`);
+      const visitData = response.data;
+  
+      const treatmentList = {
+        chiropracticAdjustment: visitData.chiropracticAdjustment || [],
+        chiropracticOther: visitData.chiropracticOther || '',
+        acupuncture: visitData.acupuncture || [],
+        acupunctureOther: visitData.acupunctureOther || '',
+        physiotherapy: visitData.physiotherapy || [],
+        rehabilitationExercises: visitData.rehabilitationExercises || [],
+        durationFrequency: visitData.durationFrequency || { timesPerWeek: '', reEvalInWeeks: '' },
+        referrals: visitData.referrals || [],
+        imaging: visitData.imaging || { xray: [], mri: [], ct: [] },
+        diagnosticUltrasound: visitData.diagnosticUltrasound || '',
+        nerveStudy: visitData.nerveStudy || [],
+        restrictions: visitData.restrictions || {
+          avoidActivityWeeks: '',
+          liftingLimitLbs: '',
+          avoidProlongedSitting: false,
+        },
+        disabilityDuration: visitData.disabilityDuration || '',
+        otherNotes: visitData.otherNotes || '',
+      };
+  
+      setTreatmentListData(treatmentList);
+      setIsTreatmentModalOpen(true);
+    } catch (error) {
+      console.error("Error fetching treatment list:", error);
+      alert("Failed to load treatment plan.");
+    }
+  };
+  
+  const fetchImagingAndSpecialistData = async (visitId: string) => {
+    if (!visitId) {
+      console.error("Visit ID is missing.");
+      alert("Please select a valid previous visit.");
+      return;
+    }
+  
+    try {
+      const response = await axios.get(`http://localhost:5000/api/patients/visits/${visitId}`);
+      const visitData = response.data;
+  
+      const imagingAndSpecialistData = {
+        physiotherapy: visitData.physiotherapy || [],
+        rehabilitationExercises: visitData.rehabilitationExercises || [],
+        durationFrequency: visitData.durationFrequency || {
+          timesPerWeek: '',
+          reEvalInWeeks: '',
+        },
+        referrals: visitData.referrals || [],
+        imaging: visitData.imaging || {
+          xray: [],
+          mri: [],
+          ct: [],
+        },
+      };
+  
+      setImagingData(imagingAndSpecialistData);
+      setIsImagingModalOpen(true);
+    } catch (error) {
+      console.error("Error fetching imaging and specialist data:", error);
+      alert("Failed to load data.");
     }
   };
   
@@ -1093,19 +1215,105 @@ List of tests specific for body part
 
           {/* Activities that still cause pain */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Activities that still cause pain:</label>
-             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                   <input
-                      type="text"
-                      id="activitiesCausePain"
-                      name="activitiesCausePain"
-                      value={formData.activitiesCausePain}
-                      onChange={handleChange}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                       placeholder="List of things specific to selected body part"
-                    />
-                </div>
+          <button
+  type="button"
+  onClick={() => fetchTreatmentPlanData(formData.previousVisit)}
+  className="bg-white text-blue-600 font-medium underline hover:text-blue-800 focus:outline-none mt-2"
+>
+  List of activities that still cause pain
+</button>
+
+{isActivitiesModalOpen && (
+  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div className="bg-white rounded-lg p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+      <div className="flex justify-between items-center mb-4">
+        <h3 className="text-xl font-semibold text-gray-800">Treatment Plan Details</h3>
+        <button
+          onClick={() => setIsActivitiesModalOpen(false)}
+          className="text-gray-500 hover:text-gray-700"
+          aria-label="Close modal"
+        >
+          <X size={24} />
+        </button>
+      </div>
+
+      <div className="bg-gray-50 p-4 rounded-md space-y-4 text-sm text-gray-700">
+        <div>
+          <h4 className="font-semibold text-gray-700">Chiropractic Adjustment:</h4>
+          <ul className="list-disc ml-5">
+            {activitiesPainData?.chiropracticAdjustment?.map((item: string, index: number) => (
+              <li key={index}>{item}</li>
+            ))}
+          </ul>
+        </div>
+
+        <div>
+          <h4 className="font-semibold text-gray-700">Chiropractic Other:</h4>
+          <p>{activitiesPainData?.chiropracticOther || 'N/A'}</p>
+        </div>
+
+        <div>
+          <h4 className="font-semibold text-gray-700">Acupuncture:</h4>
+          <ul className="list-disc ml-5">
+            {activitiesPainData?.acupuncture?.map((item: string, index: number) => (
+              <li key={index}>{item}</li>
+            ))}
+          </ul>
+        </div>
+
+        <div>
+          <h4 className="font-semibold text-gray-700">Acupuncture Other:</h4>
+          <p>{activitiesPainData?.acupunctureOther || 'N/A'}</p>
+        </div>
+
+        <div>
+          <h4 className="font-semibold text-gray-700">Physiotherapy:</h4>
+          <ul className="list-disc ml-5">
+            {activitiesPainData?.physiotherapy?.map((item: string, index: number) => (
+              <li key={index}>{item}</li>
+            ))}
+          </ul>
+        </div>
+
+        <div>
+          <h4 className="font-semibold text-gray-700">Rehabilitation Exercises:</h4>
+          <ul className="list-disc ml-5">
+            {activitiesPainData?.rehabilitationExercises?.map((item: string, index: number) => (
+              <li key={index}>{item}</li>
+            ))}
+          </ul>
+        </div>
+
+        <div>
+          <h4 className="font-semibold text-gray-700">Duration & Frequency:</h4>
+          <p>Times/Week: {activitiesPainData?.durationFrequency?.timesPerWeek || 'N/A'}</p>
+          <p>Re-eval in Weeks: {activitiesPainData?.durationFrequency?.reEvalInWeeks || 'N/A'}</p>
+        </div>
+
+        <div>
+          <h4 className="font-semibold text-gray-700">Diagnostic Ultrasound:</h4>
+          <p>{activitiesPainData?.diagnosticUltrasound || 'N/A'}</p>
+        </div>
+
+        <div>
+          <h4 className="font-semibold text-gray-700">Disability Duration:</h4>
+          <p>{activitiesPainData?.disabilityDuration || 'N/A'}</p>
+        </div>
+      </div>
+
+      <div className="mt-4 flex justify-end">
+        <button
+          onClick={() => setIsActivitiesModalOpen(false)}
+          className="px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-md"
+        >
+          Close
+        </button>
+      </div>
+    </div>
+  </div>
+)}
+
+
                  <div>
                     <label htmlFor="activitiesCausePainOther" className="block text-xs text-gray-500 mb-1">Other:</label>
                     <input
@@ -1118,7 +1326,7 @@ List of tests specific for body part
                     />
                 </div>
             </div>
-          </div>
+       
 
           <h2 className="text-xl font-semibold text-gray-800 mt-6 mb-4">ASSESSMENT AND PLAN</h2>
 
@@ -1127,15 +1335,146 @@ List of tests specific for body part
             <label className="block text-sm font-medium text-gray-700 mb-1">Treatment plan:</label>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <input
-                  type="text"
-                  id="treatmentPlan.treatments"
-                  name="treatmentPlan.treatments"
-                  value={formData.treatmentPlan.treatments}
-                  onChange={handleChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="List of treatments"
-                />
+              <button
+  type="button"
+  onClick={() => fetchTreatmentListData(formData.previousVisit)}
+  className="bg-white text-blue-600 font-medium underline hover:text-blue-800 focus:outline-none mt-2"
+>
+  List of treatments
+</button>
+{isTreatmentModalOpen && (
+  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div className="bg-white rounded-lg p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+      <div className="flex justify-between items-center mb-4">
+        <h3 className="text-xl font-semibold text-gray-800">Complete Treatment Plan</h3>
+        <button
+          onClick={() => setIsTreatmentModalOpen(false)}
+          className="text-gray-500 hover:text-gray-700"
+          aria-label="Close modal"
+        >
+          <X size={24} />
+        </button>
+      </div>
+
+      <div className="space-y-4 text-sm text-gray-700">
+        {/* Chiropractic */}
+        <div>
+          <h4 className="font-semibold">Chiropractic Adjustment:</h4>
+          <ul className="list-disc ml-5">
+            {treatmentListData?.chiropracticAdjustment?.map((item: string, i: number) => (
+              <li key={i}>{item}</li>
+            ))}
+          </ul>
+          <p><strong>Other:</strong> {treatmentListData?.chiropracticOther || 'N/A'}</p>
+        </div>
+
+        {/* Acupuncture */}
+        <div>
+          <h4 className="font-semibold">Acupuncture:</h4>
+          <ul className="list-disc ml-5">
+            {treatmentListData?.acupuncture?.map((item: string, i: number) => (
+              <li key={i}>{item}</li>
+            ))}
+          </ul>
+          <p><strong>Other:</strong> {treatmentListData?.acupunctureOther || 'N/A'}</p>
+        </div>
+
+        {/* Physiotherapy */}
+        <div>
+          <h4 className="font-semibold">Physiotherapy:</h4>
+          <ul className="list-disc ml-5">
+            {treatmentListData?.physiotherapy?.map((item: string, i: number) => (
+              <li key={i}>{item}</li>
+            ))}
+          </ul>
+        </div>
+
+        {/* Rehab Exercises */}
+        <div>
+          <h4 className="font-semibold">Rehabilitation Exercises:</h4>
+          <ul className="list-disc ml-5">
+            {treatmentListData?.rehabilitationExercises?.map((item: string, i: number) => (
+              <li key={i}>{item}</li>
+            ))}
+          </ul>
+        </div>
+
+        {/* Duration & Frequency */}
+        <div>
+          <h4 className="font-semibold">Duration & Frequency:</h4>
+          <p>Times per Week: {treatmentListData?.durationFrequency?.timesPerWeek || 'N/A'}</p>
+          <p>Re-evaluation in Weeks: {treatmentListData?.durationFrequency?.reEvalInWeeks || 'N/A'}</p>
+        </div>
+
+        {/* Referrals */}
+        <div>
+          <h4 className="font-semibold">Referrals:</h4>
+          <ul className="list-disc ml-5">
+            {treatmentListData?.referrals?.map((item: string, i: number) => (
+              <li key={i}>{item}</li>
+            ))}
+          </ul>
+        </div>
+
+        {/* Imaging */}
+        <div>
+          <h4 className="font-semibold">Imaging:</h4>
+          <p><strong>X-ray:</strong> {treatmentListData?.imaging?.xray?.join(', ') || 'N/A'}</p>
+          <p><strong>MRI:</strong> {treatmentListData?.imaging?.mri?.join(', ') || 'N/A'}</p>
+          <p><strong>CT:</strong> {treatmentListData?.imaging?.ct?.join(', ') || 'N/A'}</p>
+        </div>
+
+        {/* Diagnostic Ultrasound */}
+        <div>
+          <h4 className="font-semibold">Diagnostic Ultrasound:</h4>
+          <p>{treatmentListData?.diagnosticUltrasound || 'N/A'}</p>
+        </div>
+
+        {/* Nerve Study */}
+        <div>
+          <h4 className="font-semibold">Nerve Study:</h4>
+          <ul className="list-disc ml-5">
+            {treatmentListData?.nerveStudy?.map((item: string, i: number) => (
+              <li key={i}>{item}</li>
+            ))}
+          </ul>
+        </div>
+
+        {/* Restrictions */}
+        <div>
+          <h4 className="font-semibold">Restrictions:</h4>
+          <p>Avoid Activity (Weeks): {treatmentListData?.restrictions?.avoidActivityWeeks || 'N/A'}</p>
+          <p>Lifting Limit (lbs): {treatmentListData?.restrictions?.liftingLimitLbs || 'N/A'}</p>
+          <p>Avoid Prolonged Sitting: {treatmentListData?.restrictions?.avoidProlongedSitting ? 'Yes' : 'No'}</p>
+        </div>
+
+        {/* Disability Duration */}
+        <div>
+          <h4 className="font-semibold">Disability Duration:</h4>
+          <p>{treatmentListData?.disabilityDuration || 'N/A'}</p>
+        </div>
+
+        {/* Other Notes */}
+        <div>
+          <h4 className="font-semibold">Other Notes:</h4>
+          <p>{treatmentListData?.otherNotes || 'N/A'}</p>
+        </div>
+      </div>
+
+      <div className="mt-4 flex justify-end">
+        <button
+          onClick={() => setIsTreatmentModalOpen(false)}
+          className="px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-md"
+        >
+          Close
+        </button>
+      </div>
+    </div>
+  </div>
+)}
+
+
+
               </div>
               <div>
                 <input
@@ -1194,15 +1533,99 @@ List of tests specific for body part
           {/* Referrals */}
           <div>
             <label htmlFor="referrals" className="block text-sm font-medium text-gray-700 mb-1">Referrals: </label>
-            <input
-              type="text"
-              id="referrals"
-              name="referrals"
-              value={formData.referrals}
-              onChange={handleChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-              placeholder="List of Imaging and specialists"
-            />
+            <button
+  type="button"
+  onClick={() => fetchImagingAndSpecialistData(formData.previousVisit)}
+  className="bg-white text-blue-600 font-medium underline hover:text-blue-800 focus:outline-none mt-2"
+>
+  List of Imaging and Specialists
+</button>
+{isImagingModalOpen && (
+  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div className="bg-white rounded-lg p-6 w-full max-w-3xl max-h-[85vh] overflow-y-auto">
+      <div className="flex justify-between items-center mb-4">
+        <h3 className="text-xl font-semibold text-gray-800">Referrals & Imaging Plan</h3>
+        <button
+          onClick={() => setIsImagingModalOpen(false)}
+          className="text-gray-500 hover:text-gray-700"
+          aria-label="Close modal"
+        >
+          <X size={24} />
+        </button>
+      </div>
+
+      <div className="bg-gray-50 p-4 rounded-md space-y-4 text-sm text-gray-700">
+        {/* Referrals */}
+        <div>
+          <h4 className="font-semibold">Specialist Referrals:</h4>
+          <ul className="list-disc ml-5">
+            {imagingData?.referrals?.length > 0 ? (
+              imagingData.referrals.map((item: string, i: number) => (
+                <li key={i}>{item}</li>
+              ))
+            ) : (
+              <li>N/A</li>
+            )}
+          </ul>
+        </div>
+
+        {/* Physiotherapy */}
+        <div>
+          <h4 className="font-semibold">Physiotherapy:</h4>
+          <ul className="list-disc ml-5">
+            {imagingData?.physiotherapy?.length > 0 ? (
+              imagingData.physiotherapy.map((item: string, i: number) => (
+                <li key={i}>{item}</li>
+              ))
+            ) : (
+              <li>N/A</li>
+            )}
+          </ul>
+        </div>
+
+        {/* Rehabilitation Exercises */}
+        <div>
+          <h4 className="font-semibold">Rehabilitation Exercises:</h4>
+          <ul className="list-disc ml-5">
+            {imagingData?.rehabilitationExercises?.length > 0 ? (
+              imagingData.rehabilitationExercises.map((item: string, i: number) => (
+                <li key={i}>{item}</li>
+              ))
+            ) : (
+              <li>N/A</li>
+            )}
+          </ul>
+        </div>
+
+        {/* Duration & Frequency */}
+        <div>
+          <h4 className="font-semibold">Duration & Frequency:</h4>
+          <p><strong>Times per Week:</strong> {imagingData?.durationFrequency?.timesPerWeek || 'N/A'}</p>
+          <p><strong>Re-evaluation in Weeks:</strong> {imagingData?.durationFrequency?.reEvalInWeeks || 'N/A'}</p>
+        </div>
+
+        {/* Imaging */}
+        <div>
+          <h4 className="font-semibold">Imaging:</h4>
+          <p><strong>X-ray:</strong> {imagingData?.imaging?.xray?.join(', ') || 'N/A'}</p>
+          <p><strong>MRI:</strong> {imagingData?.imaging?.mri?.join(', ') || 'N/A'}</p>
+          <p><strong>CT:</strong> {imagingData?.imaging?.ct?.join(', ') || 'N/A'}</p>
+        </div>
+      </div>
+
+      <div className="mt-4 flex justify-end">
+        <button
+          onClick={() => setIsImagingModalOpen(false)}
+          className="px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-md"
+        >
+          Close
+        </button>
+      </div>
+    </div>
+  </div>
+)}
+
+
           </div>
 
           {/* Review of diagnostic study with the patient */}
