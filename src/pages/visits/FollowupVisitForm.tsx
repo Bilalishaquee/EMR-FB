@@ -62,6 +62,11 @@ const FollowupVisitForm: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user: _user } = useAuth(); // Prefix with _ to indicate intentionally unused
+  const [musclePalpationData, setMusclePalpationData] = useState<any>(null); // State for storing fetched muscle palpation data
+const [isMuscleModalOpen, setIsMuscleModalOpen] = useState(false); // State for controlling modal visibility
+const [isOrthoModalOpen, setIsOrthoModalOpen] = useState(false);
+  const [orthoTestsData, setOrthoTestsData] = useState<any>({});
+  const [aromData, setAromData] = useState<any>({});
   
   const [patient, setPatient] = useState<Patient | null>(null);
   const [previousVisits, setPreviousVisits] = useState<Visit[]>([]);
@@ -174,6 +179,109 @@ const FollowupVisitForm: React.FC = () => {
     };
   }, [id]);
 
+
+  const fetchMusclePalpationData = async (visitId: string) => {
+    if (!visitId) {
+      console.error("Visit ID is missing.");
+      alert("Please select a valid previous visit.");
+      return; // Prevent further execution if the visit ID is missing
+    }
+  
+    try {
+      // Fetching the complete visit data
+      const response = await axios.get(`http://localhost:5000/api/patients/visits/${visitId}`);
+      
+      // Assuming the response has the full visit data
+      const visitData = response.data;
+  
+      // Now filter only muscle-related data
+      const musclePalpationData = {
+        muscleStrength: visitData.muscleStrength,
+        strength: visitData.strength,
+        tenderness: visitData.tenderness,
+        spasm: visitData.spasm,
+      };
+  
+      // Update state with the muscle-related data
+      setMusclePalpationData(musclePalpationData);
+  
+      // Open the modal
+      setIsMuscleModalOpen(true);
+  
+    } catch (error) {
+      console.error("Error fetching muscle palpation data:", error);
+      alert("Failed to load muscle palpation data.");
+    }
+  };
+  
+  const fetchOrthoTestsData = async (visitId: string) => {
+    if (!visitId) {
+      console.error("Visit ID is missing.");
+      alert("Please select a valid previous visit.");
+      return; // Prevent further execution if the visit ID is missing
+    }
+  
+    try {
+      // Fetching the complete visit data
+      const response = await axios.get(`http://localhost:5000/api/patients/visits/${visitId}`);
+      const visitData = response.data;
+  
+      // Safeguard against undefined visitData
+      if (!visitData) {
+        console.error("Visit data is missing.");
+        alert("Failed to load visit data.");
+        return;
+      }
+  
+      // Define the types for orthoTestsData and aromData
+      const orthoTestsData: { [region: string]: { [testName: string]: { left: string; right: string; ligLaxity: string } } } = visitData.ortho
+        ? Object.entries(visitData.ortho).reduce((acc, [testName, testResult]) => {
+            const region = testName.split(' ')[0]; // Assuming the region is part of the test name (e.g., "Cervical Compression")
+            
+            // Assert that testResult is an object with known properties
+            const { left, right, ligLaxity }: { left: string; right: string; ligLaxity: string } = testResult as { left: string; right: string; ligLaxity: string };
+  
+            if (!acc[region]) acc[region] = {};
+  
+            acc[region][testName] = {
+              left: left || 'N/A', // Default to 'N/A' if 'left' is undefined
+              right: right || 'N/A', // Default to 'N/A' if 'right' is undefined
+              ligLaxity: ligLaxity || 'N/A', // Default to 'N/A' if 'ligLaxity' is undefined
+            };
+            return acc;
+          }, {} as { [region: string]: { [testName: string]: { left: string; right: string; ligLaxity: string } } })
+        : {}; // Default to empty object if `ortho` is undefined or null
+  
+      const aromData: { [region: string]: { [movementName: string]: { left: string; right: string; ligLaxity: string } } } = visitData.arom
+        ? Object.entries(visitData.arom).reduce((acc, [region, movements]) => {
+            acc[region] = Object.entries(movements).reduce((movementAcc, [movementName, movementData]) => {
+              // Assert that movementData is an object with known properties
+              const { left, right, ligLaxity }: { left: string; right: string; ligLaxity: string } = movementData as { left: string; right: string; ligLaxity: string };
+  
+              movementAcc[movementName] = {
+                left: left || 'N/A', // Default to 'N/A' if 'left' is undefined
+                right: right || 'N/A', // Default to 'N/A' if 'right' is undefined
+                ligLaxity: ligLaxity || 'N/A', // Default to 'N/A' if 'ligLaxity' is undefined
+              };
+              return movementAcc;
+            }, {});
+            return acc;
+          }, {} as { [region: string]: { [movementName: string]: { left: string; right: string; ligLaxity: string } } })
+        : {}; // Default to empty object if `arom` is undefined or null
+  
+      // Update state with both Orthopedic tests and AROM data
+      setOrthoTestsData(orthoTestsData);
+      setAromData(aromData);
+  
+      // Open the modal to display the data
+      setIsOrthoModalOpen(true);
+  
+    } catch (error) {
+      console.error("Error fetching orthopedic tests data:", error);
+      alert("Failed to load orthopedic tests data.");
+    }
+  };
+  
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target;
     
@@ -366,40 +474,186 @@ const FollowupVisitForm: React.FC = () => {
         )}
       </div>
 
-      {/* Modal */}
-      {isModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-xl font-semibold">Initial Visit Data</h3>
-              <button
-                onClick={() => setIsModalOpen(false)}
-                className="text-gray-500 hover:text-gray-700"
-                aria-label="Close modal"
-              >
-                <X size={24} />
-              </button>
-            </div>
-            <div className="bg-gray-50 p-4 rounded-md">
-              {initialVisitData ? (
-                <pre className="whitespace-pre-wrap text-sm overflow-auto">
-                  {JSON.stringify(initialVisitData, null, 2)}
-                </pre>
-              ) : (
-                <p>Loading initial visit data...</p>
-              )}
-            </div>
-            <div className="mt-4 flex justify-end">
-              <button
-                onClick={() => setIsModalOpen(false)}
-                className="px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-md"
-              >
-                Close
-              </button>
-            </div>
-          </div>
+    {/* Modal */}
+{/* Modal */}
+{isModalOpen && (
+  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div className="bg-white rounded-lg p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+      <div className="flex justify-between items-center mb-4">
+        <h3 className="text-xl font-semibold text-gray-800">Initial Visit Data</h3>
+        <button
+          onClick={() => setIsModalOpen(false)}
+          className="text-gray-500 hover:text-gray-700"
+          aria-label="Close modal"
+        >
+          <X size={24} />
+        </button>
+      </div>
+
+      <div className="bg-gray-50 p-4 rounded-md space-y-6">
+
+        {/* Displaying Chief Complaint */}
+        <div className="section">
+          <h4 className="font-bold text-lg text-gray-800">Chief Complaint:</h4>
+          <p>{initialVisitData?.chiefComplaint || 'N/A'}</p>
         </div>
-      )}
+
+        {/* Displaying Vitals */}
+        <div className="section">
+          <h4 className="font-bold text-lg text-gray-800">Vitals:</h4>
+          <p><span className="font-semibold">Height:</span> {initialVisitData?.vitals?.height || 'N/A'}</p>
+          <p><span className="font-semibold">Weight:</span> {initialVisitData?.vitals?.weight || 'N/A'}</p>
+          <p><span className="font-semibold">Temperature:</span> {initialVisitData?.vitals?.temp || 'N/A'}</p>
+          <p><span className="font-semibold">Blood Pressure:</span> {initialVisitData?.vitals?.bp || 'N/A'}</p>
+          <p><span className="font-semibold">Pulse:</span> {initialVisitData?.vitals?.pulse || 'N/A'}</p>
+        </div>
+
+        {/* Displaying Grip Strength */}
+        <div className="section">
+          <h4 className="font-bold text-lg text-gray-800">Grip Strength:</h4>
+          <p><span className="font-semibold">Right Hand 1:</span> {initialVisitData?.grip?.right1 || 'N/A'}</p>
+          <p><span className="font-semibold">Right Hand 2:</span> {initialVisitData?.grip?.right2 || 'N/A'}</p>
+          <p><span className="font-semibold">Right Hand 3:</span> {initialVisitData?.grip?.right3 || 'N/A'}</p>
+          <p><span className="font-semibold">Left Hand 1:</span> {initialVisitData?.grip?.left1 || 'N/A'}</p>
+          <p><span className="font-semibold">Left Hand 2:</span> {initialVisitData?.grip?.left2 || 'N/A'}</p>
+          <p><span className="font-semibold">Left Hand 3:</span> {initialVisitData?.grip?.left3 || 'N/A'}</p>
+        </div>
+
+        {/* Displaying Appearance */}
+        <div className="section">
+          <h4 className="font-bold text-lg text-gray-800">Appearance:</h4>
+          {initialVisitData?.appearance?.length > 0 ? initialVisitData.appearance.join(', ') : 'N/A'}
+        </div>
+
+        {/* Displaying Posture */}
+        <div className="section">
+          <h4 className="font-bold text-lg text-gray-800">Posture:</h4>
+          {initialVisitData?.posture?.length > 0 ? initialVisitData.posture.join(', ') : 'N/A'}
+        </div>
+
+        {/* Displaying Gait */}
+        <div className="section">
+          <h4 className="font-bold text-lg text-gray-800">Gait:</h4>
+          {initialVisitData?.gait?.length > 0 ? initialVisitData.gait.join(', ') : 'N/A'}
+        </div>
+
+        {/* Displaying Strength */}
+        <div className="section">
+          <h4 className="font-bold text-lg text-gray-800">Strength:</h4>
+          <p><span className="font-semibold">C5:</span> {initialVisitData?.strength?.C5 || 'N/A'}</p>
+          <p><span className="font-semibold">C6:</span> {initialVisitData?.strength?.C6 || 'N/A'}</p>
+          <p><span className="font-semibold">C7:</span> {initialVisitData?.strength?.C7 || 'N/A'}</p>
+          <p><span className="font-semibold">C8:</span> {initialVisitData?.strength?.C8 || 'N/A'}</p>
+          <p><span className="font-semibold">T1:</span> {initialVisitData?.strength?.T1 || 'N/A'}</p>
+          <p><span className="font-semibold">L2:</span> {initialVisitData?.strength?.L2 || 'N/A'}</p>
+          <p><span className="font-semibold">L3:</span> {initialVisitData?.strength?.L3 || 'N/A'}</p>
+          <p><span className="font-semibold">L4:</span> {initialVisitData?.strength?.L4 || 'N/A'}</p>
+          <p><span className="font-semibold">L5:</span> {initialVisitData?.strength?.L5 || 'N/A'}</p>
+          <p><span className="font-semibold">S1:</span> {initialVisitData?.strength?.S1 || 'N/A'}</p>
+        </div>
+
+        {/* Displaying Range of Motion (ROM) */}
+        <div className="section">
+          <h4 className="font-bold text-lg text-gray-800">Range of Motion (ROM):</h4>
+          {initialVisitData?.arom ? (
+            Object.keys(initialVisitData.arom).map((region) => (
+              <div key={region}>
+                <h5 className="font-semibold text-md text-gray-700">{region}</h5>
+                {Object.keys(initialVisitData.arom[region]).map((movement) => (
+                  <p key={movement}><span className="font-semibold">{movement}:</span> {JSON.stringify(initialVisitData.arom[region][movement], null, 2)}</p>
+                ))}
+              </div>
+            ))
+          ) : (
+            <p>N/A</p>
+          )}
+        </div>
+
+        {/* Displaying Orthopedic Tests */}
+        <div className="section">
+          <h4 className="font-bold text-lg text-gray-800">Orthopedic Tests:</h4>
+          {initialVisitData?.ortho ? (
+            Object.keys(initialVisitData.ortho).map((test) => (
+              <div key={test}>
+                <p><span className="font-semibold">{test} (Left):</span> {initialVisitData.ortho[test].left || 'N/A'}</p>
+                <p><span className="font-semibold">{test} (Right):</span> {initialVisitData.ortho[test].right || 'N/A'}</p>
+                {initialVisitData.ortho[test].ligLaxity && (
+                  <p><span className="font-semibold">{test} (Ligament Laxity):</span> {initialVisitData.ortho[test].ligLaxity}</p>
+                )}
+              </div>
+            ))
+          ) : (
+            <p>N/A</p>
+          )}
+        </div>
+
+        {/* Displaying Tenderness */}
+        <div className="section">
+          <h4 className="font-bold text-lg text-gray-800">Tenderness:</h4>
+          {initialVisitData?.tenderness ? (
+            Object.keys(initialVisitData.tenderness).map((region) => (
+              <p key={region}><span className="font-semibold">{region}:</span> {initialVisitData.tenderness[region].join(', ')}</p>
+            ))
+          ) : (
+            <p>N/A</p>
+          )}
+        </div>
+
+        {/* Displaying Spasm */}
+        <div className="section">
+          <h4 className="font-bold text-lg text-gray-800">Spasm:</h4>
+          {initialVisitData?.spasm ? (
+            Object.keys(initialVisitData.spasm).map((region) => (
+              <p key={region}><span className="font-semibold">{region}:</span> {initialVisitData.spasm[region].join(', ')}</p>
+            ))
+          ) : (
+            <p>N/A</p>
+          )}
+        </div>
+
+        {/* Displaying Lumbar Touching Toes Movement */}
+        <div className="section">
+          <h4 className="font-bold text-lg text-gray-800">Lumbar Touching Toes Movement:</h4>
+          {initialVisitData?.lumbarTouchingToesMovement ? (
+            Object.keys(initialVisitData.lumbarTouchingToesMovement).map((movement) => (
+              <p key={movement}>
+                <span className="font-semibold">{movement}:</span> {initialVisitData.lumbarTouchingToesMovement[movement] ? 'Yes' : 'No'}
+              </p>
+            ))
+          ) : (
+            <p>N/A</p>
+          )}
+        </div>
+
+        {/* Displaying Cervical AROM Checkmarks */}
+        <div className="section">
+          <h4 className="font-bold text-lg text-gray-800">Cervical AROM Checkmarks:</h4>
+          {initialVisitData?.cervicalAROMCheckmarks ? (
+            Object.keys(initialVisitData.cervicalAROMCheckmarks).map((checkmark) => (
+              <p key={checkmark}>
+                <span className="font-semibold">{checkmark}:</span> {initialVisitData.cervicalAROMCheckmarks[checkmark] ? 'Yes' : 'No'}
+              </p>
+            ))
+          ) : (
+            <p>N/A</p>
+          )}
+        </div>
+
+      </div>
+
+      <div className="mt-4 flex justify-end">
+        <button
+          onClick={() => setIsModalOpen(false)}
+          className="px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-md"
+        >
+          Close
+        </button>
+      </div>
+    </div>
+  </div>
+)}
+
+
 
       {localFormData && (
         <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-6">
@@ -483,7 +737,13 @@ const FollowupVisitForm: React.FC = () => {
 
           {/* Areas */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Areas: Auto generated from Initial</label>
+          <button
+  type="button"
+  onClick={() => fetchInitialVisitData(formData.previousVisit)}
+  className="bg-white text-blue-600 font-medium underline hover:text-blue-800 focus:outline-none mb-4" >
+  Areas: Auto generated from Initial
+</button>
+
             <div className="flex items-center space-x-4">
               <div className="flex items-center">
                 <input
@@ -523,17 +783,106 @@ const FollowupVisitForm: React.FC = () => {
 
           {/* Muscle Palpation */}
           <div>
-            <label htmlFor="musclePalpation" className="block text-sm font-medium text-gray-700 mb-1">Muscle Palpation: </label>
-            <input
-              type="text"
-              id="musclePalpation"
-              name="musclePalpation"
-              value={formData.musclePalpation}
-              onChange={handleChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-              placeholder="List of muscles specific to that body part"
-            />
-          </div>
+  <label htmlFor="musclePalpation" className="block text-sm font-medium text-gray-700 mb-1">Muscle Palpation: </label>
+  <button
+  type="button"
+  onClick={() => fetchMusclePalpationData(formData.previousVisit)}
+  className="bg-white text-blue-600 font-medium underline hover:text-blue-800 focus:outline-none"
+>
+  List of muscles specific to that body part
+</button>
+
+</div>
+
+{isMuscleModalOpen && (
+  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div className="bg-white rounded-lg p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+      <div className="flex justify-between items-center mb-4">
+        <h3 className="text-xl font-semibold text-gray-800">Muscle Palpation Data</h3>
+        <button
+          onClick={() => setIsMuscleModalOpen(false)}
+          className="text-gray-500 hover:text-gray-700"
+          aria-label="Close modal"
+        >
+          <X size={24} />
+        </button>
+      </div>
+
+      {/* Displaying muscle palpation data */}
+      <div className="bg-gray-50 p-4 rounded-md space-y-6">
+        {/* Muscle Strength */}
+        <div>
+          <h4 className="font-bold text-lg text-gray-800">Muscle Strength:</h4>
+          {musclePalpationData?.muscleStrength ? (
+            <ul className="list-disc ml-5">
+              {musclePalpationData.muscleStrength.map((strength: string, index: number) => (
+                <li key={index} className="text-sm text-gray-700">
+                  {strength || 'N/A'}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p>N/A</p>
+          )}
+        </div>
+
+        {/* Strength */}
+        <div>
+          <h4 className="font-bold text-lg text-gray-800">Strength:</h4>
+          {musclePalpationData?.strength ? (
+            Object.entries(musclePalpationData.strength).map(([key, value]) => (
+              <p key={key} className="text-sm text-gray-700">
+                <span className="font-semibold">{key}:</span> {value || 'N/A'}
+              </p>
+            ))
+          ) : (
+            <p>N/A</p>
+          )}
+        </div>
+
+        {/* Tenderness */}
+        <div>
+          <h4 className="font-bold text-lg text-gray-800">Tenderness:</h4>
+          {musclePalpationData?.tenderness ? (
+            Object.entries(musclePalpationData.tenderness).map(([region, labels]) => (
+              <p key={region} className="text-sm text-gray-700">
+                <span className="font-semibold">{region}:</span> {labels.join(', ') || 'N/A'}
+              </p>
+            ))
+          ) : (
+            <p>N/A</p>
+          )}
+        </div>
+
+        {/* Spasm */}
+        <div>
+          <h4 className="font-bold text-lg text-gray-800">Spasm:</h4>
+          {musclePalpationData?.spasm ? (
+            Object.entries(musclePalpationData.spasm).map(([region, labels]) => (
+              <p key={region} className="text-sm text-gray-700">
+                <span className="font-semibold">{region}:</span> {labels.join(', ') || 'N/A'}
+              </p>
+            ))
+          ) : (
+            <p>N/A</p>
+          )}
+        </div>
+      </div>
+
+      {/* Close Button */}
+      <div className="mt-4 flex justify-end">
+        <button
+          onClick={() => setIsMuscleModalOpen(false)}
+          className="px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-md"
+        >
+          Close
+        </button>
+      </div>
+    </div>
+  </div>
+)}
+
+
 
           {/* Pain Radiating */}
           <div>
@@ -613,18 +962,89 @@ const FollowupVisitForm: React.FC = () => {
           {/* Orthos */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Orthos:</label>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label htmlFor="orthos.tests" className="block text-xs text-gray-500 mb-1">List of tests specific for body part</label>
-                <input
-                  type="text"
-                  id="orthos.tests"
-                  name="orthos.tests"
-                  value={formData.orthos.tests}
-                  onChange={handleChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                />
+            <button
+  type="button"
+  onClick={() => fetchOrthoTestsData(formData.previousVisit)}
+  className="bg-white text-blue-600 font-medium underline hover:text-blue-800 focus:outline-none"
+>
+List of tests specific for body part    
+</button>
+{isOrthoModalOpen && (
+  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div className="bg-white rounded-lg p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+      <div className="flex justify-between items-center mb-4">
+        <h3 className="text-xl font-semibold text-gray-800">Orthopedic Tests Data</h3>
+        <button
+          onClick={() => setIsOrthoModalOpen(false)}
+          className="text-gray-500 hover:text-gray-700"
+          aria-label="Close modal"
+        >
+          <X size={24} />
+        </button>
+      </div>
+
+      {/* Displaying Orthopedic Test Data */}
+      <div className="bg-gray-50 p-4 rounded-md space-y-6">
+        {/* Orthopedic Tests */}
+        <div>
+          <h4 className="font-bold text-lg text-gray-800 mb-2">Orthopedic Tests:</h4>
+          {Object.entries(orthoTestsData).length > 0 ? (
+            Object.entries(orthoTestsData).map(([region, tests]) => (
+              <div key={region} className="mb-6">
+                <h5 className="font-semibold text-lg text-gray-800">{region}</h5>
+                {Object.entries(tests).map(([testName, testResult]) => (
+                  <div key={testName} className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      {/* Test Name */}
+                      <span className="font-medium text-gray-600">{testName}:</span>
+                      
+                      {/* Display Orthopedic Test (Left, Right, Ligament Laxity) */}
+                      <div className="flex space-x-4">
+                        <input
+                          type="text"
+                          value={testResult.left || 'N/A'}
+                          readOnly
+                          className="px-2 py-1 border border-gray-300 rounded-md text-sm text-gray-700 focus:outline-none"
+                        />
+                        <input
+                          type="text"
+                          value={testResult.right || 'N/A'}
+                          readOnly
+                          className="px-2 py-1 border border-gray-300 rounded-md text-sm text-gray-700 focus:outline-none"
+                        />
+                        <input
+                          type="text"
+                          value={testResult.ligLaxity || 'N/A'}
+                          readOnly
+                          className="px-2 py-1 border border-gray-300 rounded-md text-sm text-gray-700 focus:outline-none"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </div>
+            ))
+          ) : (
+            <p className="text-gray-600">No orthopedic test data available.</p>
+          )}
+        </div>
+      </div>
+
+      {/* Close Button */}
+      <div className="mt-4 flex justify-end">
+        <button
+          onClick={() => setIsOrthoModalOpen(false)}
+          className="px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-md"
+        >
+          Close
+        </button>
+      </div>
+    </div>
+  </div>
+)}
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            
               <div>
                  <label htmlFor="orthos.result" className="block text-xs text-gray-500 mb-1">Result</label>
                  <input
