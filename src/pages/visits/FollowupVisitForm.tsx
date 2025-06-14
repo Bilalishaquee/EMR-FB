@@ -667,28 +667,57 @@ setPreviousVisits(sortedVisits);
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: "Bearer sk-b2f10ae71f37484c83093c51b49d29bc", // 🔐 Replace with env variable in production
+          Authorization: "Bearer sk-b2f10ae71f37484c83093c51b49d29bc", // 🔐 Replace for production
         },
         body: JSON.stringify({
           model: "deepseek-chat",
+          temperature: 0.3,
+          max_tokens: 400, // Keep small to limit response size and time
           messages: [
             {
               role: "system",
               content: `
-  You are an experienced clinical therapist AI. Based on the provided musculoskeletal exam findings, orthopaedic assessment, range of motion, neurological status, and vitals — recommend personalized home care for recovery and prevention. Include:
-  
-  - Exercises (ROM, posture, rehab, flexibility)
-  - Ergonomic and daily routine advice
-  - Pain management tips (heat/ice, rest, movement)
-  - Specialist follow-up if needed
-  - Home safety or adaptive device tips if gait/device issues exist
-  
-  Respond clearly in bullet points.
-              `.trim(),
+You are a clinical therapist AI.
+
+Based on the patient's clinical data, return a short, visually clean home care summary in raw HTML.
+
+Format:
+
+<h3 class='text-md font-semibold mt-4 mb-2'>Exercises</h3>
+<ul class='list-disc list-inside text-gray-800'>
+  <li><strong>Neck Retractions</strong> – 10 reps, 3x/day to improve posture.</li>
+  <li>...</li>
+</ul>
+
+<h3 class='text-md font-semibold mt-4 mb-2'>Ergonomic Tips</h3>
+<ul class='list-disc list-inside text-gray-800'>
+  <li>...</li>
+</ul>
+
+<h3 class='text-md font-semibold mt-4 mb-2'>Pain Relief</h3>
+<ul class='list-disc list-inside text-gray-800'>
+  <li>...</li>
+</ul>
+
+<h3 class='text-md font-semibold mt-4 mb-2'>Follow-up & Safety</h3>
+<ul class='list-disc list-inside text-gray-800'>
+  <li>...</li>
+</ul>
+
+Rules:
+- Use <h2> and <h3> for headings with Tailwind classes.
+- Use <ul><li> with list-disc, list-inside, text-gray-800.
+- No paragraphs, no extra commentary.
+- Max 3 bullet points per section.
+- Response must be in under 250 words and generated in 2 seconds.
+
+Now generate this summary using the provided patient data:
+`.trim(),
+
             },
             {
               role: "user",
-              content: `Here is the full patient clinical data for generating home care suggestions:\n${JSON.stringify(formData, null, 2)}`
+              content: JSON.stringify(formData, null, 2)
             }
           ]
         }),
@@ -697,11 +726,9 @@ setPreviousVisits(sortedVisits);
       const data = await response.json();
       const aiText = data?.choices?.[0]?.message?.content || "No suggestions returned by AI.";
   
-      // Show in modal
       setHomeCareSuggestions(aiText);
       setIsHomeCareModalOpen(true);
   
-      // Store in both formData.homeCare and formData.fetchedData
       setFormData((prev) => ({
         ...prev,
         homeCare: aiText,
@@ -710,12 +737,12 @@ setPreviousVisits(sortedVisits);
           homeCareSuggestions: aiText,
         }
       }));
-      
+  
     } catch (error) {
       console.error("Error calling DeepSeek:", error);
       alert("Failed to fetch AI suggestions.");
     }
-  };
+  };  
 
   const fetchInitialVisitData = async (visitId: string) => {
     try {
@@ -2043,7 +2070,7 @@ List of tests specific for body part
   <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
     <div className="bg-white rounded-lg p-6 w-full max-w-xl max-h-[90vh] overflow-y-auto">
       <div className="flex justify-between items-center mb-4">
-        <h3 className="text-xl font-semibold text-gray-800">AI-Suggested Home Care</h3>
+        <h3 className="text-xl font-bold text-gray-800"> Home Care </h3>
         <button
           onClick={() => setIsHomeCareModalOpen(false)}
           className="text-gray-500 hover:text-gray-700"
@@ -2052,9 +2079,11 @@ List of tests specific for body part
           <X size={24} />
         </button>
       </div>
-      <div className="text-sm text-gray-700 whitespace-pre-line">
-        {homeCareSuggestions}
-      </div>
+      <div className="prose prose-sm max-w-none text-gray-800">
+  <div dangerouslySetInnerHTML={{ __html: homeCareSuggestions }} />
+</div>
+
+
       <div className="mt-4 flex justify-end">
         <button
           onClick={() => setIsHomeCareModalOpen(false)}
