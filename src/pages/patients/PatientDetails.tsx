@@ -334,6 +334,8 @@ const PatientDetails: React.FC<{}> = () => {
     medicalHistory: true,
   };
 
+  const [isGeneratingReport, setIsGeneratingReport] = useState(false);
+
   useEffect(() => {
     const fetchPatientData = async () => {
       setIsLoading(true);
@@ -435,269 +437,249 @@ const PatientDetails: React.FC<{}> = () => {
   };
 
   const generateFullReport = async () => {
+    if (!patient) return;
+    setIsGeneratingReport(true);
     const doc = new jsPDF();
     const pageWidth = doc.internal.pageSize.getWidth();
     let y = 30;
     const margin = 20;
     const logoBase64 = await toBase64(logo);
+    const signatureBase64 = await toBase64('/src/Assets/sig.png');
   
-    // Color palette
     const colors = {
-      primary: [44, 62, 80],       // Dark blue
-      secondary: [231, 76, 60],    // Red
-      accent: [52, 152, 219],      // Blue
-      lightGray: [236, 240, 241],  // Light gray
-      darkGray: [127, 140, 141],   // Dark gray
-      success: [46, 204, 113],     // Green
-      warning: [241, 196, 15],     // Yellow
-      purple: [155, 89, 182]       // Purple
+      primary: [44, 62, 80],
+      secondary: [231, 76, 60],
+      accent: [52, 152, 219],
+      lightGray: [236, 240, 241],
+      darkGray: [127, 140, 141],
+      success: [46, 204, 113],
+      warning: [241, 196, 15],
+      purple: [155, 89, 182]
     };
   
     const addHeaderAndFooter = (doc: any, pageNumber: number, totalPages: number) => {
-      // Header with gradient background
-      doc.setFillColor(colors.primary[0], colors.primary[1], colors.primary[2]);
+      doc.setFillColor(...colors.primary);
       doc.rect(0, 0, pageWidth, 25, 'F');
-      
-      // Logo and title
       doc.addImage(logoBase64, 'PNG', 15, 8, 12, 12);
       doc.setFontSize(14);
       doc.setTextColor(255, 255, 255);
       doc.setFont('helvetica', 'bold');
-      doc.text('Final Narrative Report', 32, 18);
-      
-      // Clinic name
+      doc.text('Medical Report', 32, 18);
       doc.setFontSize(12);
-      doc.setTextColor(colors.warning[0], colors.warning[1], colors.warning[2]);
+      doc.setTextColor(...colors.warning);
       doc.text('The Wellness Studio', pageWidth - 15, 18, { align: 'right' });
-      
-      // Footer
-      doc.setFillColor(colors.lightGray[0], colors.lightGray[1], colors.lightGray[2]);
+      doc.setFillColor(...colors.lightGray);
       doc.rect(0, 280, pageWidth, 20, 'F');
-      
       const footerText = `The Wellness Studio • 3711 Long Beach Blvd., Suite 200, Long Beach, CA, 90807 • Tel: (562) 980-0555  Page ${pageNumber} of ${totalPages}`;
       doc.setFontSize(9);
-      doc.setTextColor(colors.darkGray[0], colors.darkGray[1], colors.darkGray[2]);
+      doc.setTextColor(...colors.darkGray);
       doc.text(footerText, pageWidth / 2, 290, { align: 'center' });
     };
   
-    // Patient Info Table
-    doc.setFontSize(14);
-    doc.setTextColor(colors.primary[0], colors.primary[1], colors.primary[2]);
-    doc.setFont('helvetica', 'bold');
-    doc.text('PATIENT INFORMATION', pageWidth / 2, y, { align: 'center' });
-    y += 10;
-  
-    autoTable(doc, {
-      startY: y,
-      styles: { 
-        fontSize: 10, 
-        cellPadding: 4,
-        lineColor: [220, 220, 220],
-        lineWidth: 0.5
-      },
-      headStyles: { 
-        fillColor: colors.primary,
-        textColor: 255,
-        fontStyle: 'bold',
-        halign: 'center'
-      },
-      bodyStyles: {
-        textColor: 50,
-        fontStyle: 'normal'
-      },
-      columnStyles: { 
-        0: { 
-          cellWidth: 60,
-          fillColor: [245, 245, 245],
-          fontStyle: 'bold'
-        }, 
-        1: { 
-          cellWidth: pageWidth - 100 
-        } 
-      },
-      head: [['Field', 'Details']],
-      body: [
-        ['Patient', `${patient?.firstName || ''} ${patient?.lastName || ''}`],
-        ['Date of Birth', new Date(patient?.dateOfBirth || '').toLocaleDateString() || ''],
-        ['Gender', patient?.gender || ''],
-        ['Marital Status', patient?.maritalStatus || 'N/A'],
-        ['Injury Date', patient?.injuryDate ? new Date(patient.injuryDate).toLocaleDateString() : 'N/A'],
-      ],
-      theme: 'grid',
-      margin: { left: margin, right: margin }
-    });
-  
-    y = (doc as any).lastAutoTable.finalY + 15;
-  
-    const addNarrativeSection = (title: string, color: number[], fields: Array<[string, any]>) => {
-      let height = 0;
-      const sentences: Array<{label: string, text: string[]}> = [];
-  
-      fields.forEach(([label, value]) => {
-        if (!value) return;
-        const line = `${label}: ${typeof value === 'string' ? value : Array.isArray(value) ? value.join(', ') : JSON.stringify(value)}`;
-        const wrapped = doc.splitTextToSize(line, 170);
-        sentences.push({ label, text: wrapped });
-        height += wrapped.length * 6 + 6;
+    try {
+      const response = await axios.post('http://localhost:5000/api/ai/generate-narrative', {
+        patient,
+        visits,
       });
   
-      if (y + height + 20 > 270) {
+      const aiNarrative = response.data.narrative;
+  
+      // PATIENT INFO
+      doc.setFontSize(14);
+      doc.setTextColor(...colors.primary);
+      doc.setFont('helvetica', 'bold');
+      doc.text('PATIENT INFORMATION', pageWidth / 2, y, { align: 'center' });
+      y += 10;
+  
+      autoTable(doc, {
+        startY: y,
+        styles: { fontSize: 10, cellPadding: 4 },
+        headStyles: {
+          fillColor: colors.primary,
+          textColor: 255,
+          fontStyle: 'bold',
+          halign: 'center'
+        },
+        bodyStyles: { textColor: 50, fontStyle: 'normal' },
+        columnStyles: {
+          0: { cellWidth: 60, fillColor: [245, 245, 245], fontStyle: 'bold' },
+          1: { cellWidth: pageWidth - 100 }
+        },
+        head: [['Field', 'Details']],
+        body: [
+          ['Name', `${patient.firstName} ${patient.lastName}`],
+          ['Date of Birth', new Date(patient.dateOfBirth).toLocaleDateString()],
+          ['Gender', patient.gender],
+          ['Status', patient.status]
+        ],
+        theme: 'grid',
+        margin: { left: margin, right: margin }
+      });
+  
+      y = (doc as any).lastAutoTable.finalY + 15;
+  
+      const addNarrativeSection = (title: string, color: number[], fields: Array<[string, any]>) => {
+        const sentences: Array<{ label: string; text: string[] }> = [];
+        let height = 0;
+  
+        fields.forEach(([label, value]) => {
+          if (!value) return;
+          const line = `• ${label}: ${typeof value === 'string' ? value : Array.isArray(value) ? value.join(', ') : JSON.stringify(value)}`;
+          const wrapped = doc.splitTextToSize(line, pageWidth - margin * 2);
+          sentences.push({ label, text: wrapped });
+          height += wrapped.length * 6 + 4;
+        });
+  
+        if (y + height > 260) {
+          doc.addPage();
+          y = 30;
+        }
+        y += 10;
+  
+        doc.setFillColor(...color);
+        doc.roundedRect(margin - 2, y - 6, pageWidth - margin * 2 + 4, 10, 3, 3, 'F');
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(12);
+        doc.setTextColor(255, 255, 255);
+        doc.text(title, margin, y + 2);
+        y += 12;
+  
+        doc.setFillColor(255, 255, 255);
+        doc.setDrawColor(200);
+       
+  
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(10);
+        doc.setTextColor(50);
+        sentences.forEach(({ text }) => {
+          doc.text(text, margin, y);
+          y += text.length * 6 + 2;
+        });
+  
+        y += 10;
+      };
+  
+      // GROUPED VISITS
+      const grouped = {
+        initial: visits.find(v => v.visitType === 'initial'),
+        followup: visits.find(v => v.visitType === 'followup'),
+        discharge: visits.find(v => v.visitType === 'discharge')
+      };
+  
+      if (grouped.initial) {
+        const v = grouped.initial;
+        addNarrativeSection('INITIAL VISIT', colors.accent, [
+          ['Chief Complaint', v.chiefComplaint],
+          ['Chiropractic Adjustment', v.chiropracticAdjustment?.join(', ')],
+          ['Chiropractic Other Notes', v.chiropracticOther],
+          ['Acupuncture', v.acupuncture?.join(', ')],
+          ['Acupuncture Other Notes', v.acupunctureOther],
+          ['Physiotherapy', v.physiotherapy?.join(', ')],
+          ['Rehabilitation Exercises', v.rehabilitationExercises?.join(', ')],
+          ['Treatment Frequency', v.durationFrequency ? `${v.durationFrequency.timesPerWeek} times/week, re-eval in ${v.durationFrequency.reEvalInWeeks} weeks` : ''],
+          ['Referrals', v.referrals?.join(', ')],
+          ['Imaging', v.imaging ? Object.entries(v.imaging).map(([modality, parts]) => `${modality.toUpperCase()}: ${parts.join(', ')}`).join('; ') : ''],
+          ['Diagnostic Ultrasound', v.diagnosticUltrasound],
+          ['Nerve Study', v.nerveStudy?.join(', ')],
+          ['Restrictions', v.restrictions ? `Avoid activity for ${v.restrictions.avoidActivityWeeks} weeks, lifting limit ${v.restrictions.liftingLimitLbs} lbs${v.restrictions.avoidProlongedSitting ? ', avoid prolonged sitting' : ''}` : ''],
+          ['Disability Duration', v.disabilityDuration],
+          ['Other Notes', v.otherNotes]
+        ]);
+      }
+  
+      if (grouped.followup) {
+        const v = grouped.followup;
+        addNarrativeSection('FOLLOW-UP VISIT', colors.success, [
+          ['Areas Status', [v.areasImproving && '✓ Improving', v.areasExacerbated && '✗ Exacerbated', v.areasSame && '➔ Same'].filter(Boolean).join(' ')],
+          ['Muscle Palpation', v.musclePalpation],
+          ['Pain Radiating', v.painRadiating],
+          ['Range of Motion', [v.romWnlNoPain && '✓ WNL (No Pain)', v.romWnlWithPain && '⚠ WNL (With Pain)', v.romImproved && '↑ Improved', v.romDecreased && '↓ Decreased', v.romSame && '→ Same'].filter(Boolean).join(' ')],
+          ['Orthopedic Tests', v.orthos ? `${v.orthos.tests} - ${v.orthos.result}` : ''],
+          ['Activities Causing Pain', [v.activitiesCausePain, v.activitiesCausePainOther].filter(Boolean).join(' ')],
+          ['Treatment Plan', v.treatmentPlan ? `${v.treatmentPlan.treatments} (${v.treatmentPlan.timesPerWeek} times/week)` : ''],
+          ['Overall Response', [v.overallResponse?.improving && '↑ Improving', v.overallResponse?.worse && '↓ Worse', v.overallResponse?.same && '→ Same'].filter(Boolean).join(' ')],
+          ['Diagnostic Study', v.diagnosticStudy ? `${v.diagnosticStudy.study} of ${v.diagnosticStudy.bodyPart}: ${v.diagnosticStudy.result}` : ''],
+          ['Home Care', Array.isArray(v.homeCare) ? v.homeCare.join(', ') : (v.homeCare || 'N/A')],
+          ['Referral', v.referral],
+          ['Notes', v.otherNotes]
+        ]);
+      }
+  
+      if (grouped.discharge) {
+        const v = grouped.discharge;
+        addNarrativeSection('DISCHARGE VISIT', colors.secondary, [
+          ['Prognosis', v.prognosis],
+          ['Range of Motion', v.romPercent ? `${v.romPercent}% of pre-injury ROM` : ''],
+          ['Diagnostic Study', v.diagnosticStudy ? `${v.diagnosticStudy.study} of ${v.diagnosticStudy.bodyPart}: ${v.diagnosticStudy.result}` : ''],
+          ['Recommended Future Medical Care', Array.isArray(v.futureMedicalCare) ? v.futureMedicalCare.join(', ') : (v.futureMedicalCare || 'N/A')],
+          ['Croft Criteria', v.croftCriteria],
+          ['AMA Disability', v.amaDisability],
+          ['Home Care Instructions', v.homeCare?.join(', ')],
+          ['Referrals / Notes', v.referralsNotes],
+          ['Treatment Summary', v.treatmentSummary],
+          ['Discharge Diagnosis', v.dischargeDiagnosis?.join(', ')],
+          ['Medications at Discharge', v.medicationsAtDischarge?.map(med => `${med.name} (${med.dosage}, ${med.frequency}, ${med.duration})`).join('; ')],
+          ['Follow-up Instructions', v.followUpInstructions],
+          ['Return Precautions', v.returnPrecautions?.join(', ')]
+        ]);
+      }
+  
+      // AI NARRATIVE (formatted)
+      // Dynamically extract all sections from AI narrative
+const matches = [...aiNarrative.matchAll(/\*\*(.+?):\*\*\s*([\s\S]*?)(?=\*\*|$)/g)];
+
+matches.forEach(([_, section, content]) => {
+  addNarrativeSection(section.toUpperCase(), colors.purple, [[section, content.trim()]]);
+});
+
+  
+      // SIGNATURE
+      if (y > 220) {
         doc.addPage();
         y = 30;
       }
-  
-      // Section header with colored background
-      doc.setFillColor(color[0], color[1], color[2]);
-      doc.setDrawColor(color[0], color[1], color[2]);
-      doc.roundedRect(margin - 2, y - 6, pageWidth - margin * 2 + 4, 10, 3, 3, 'F');
-      
-      // Section content box
-      doc.setFillColor(255, 255, 255);
-      doc.setDrawColor(200);
-      doc.roundedRect(margin - 2, y + 4, pageWidth - margin * 2 + 4, height + 6, 3, 3, 'FD');
-  
+      doc.addImage(signatureBase64, 'PNG', margin, y, 40, 20);
+      y += 22;
+      doc.setDrawColor(0);
+      doc.line(margin, y, margin + 60, y);
+      y += 6;
       doc.setFont('helvetica', 'bold');
-      doc.setFontSize(12);
-      doc.setTextColor(255, 255, 255);
-      doc.text(title, margin, y + 2);
-      y += 12;
-  
-      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(11);
+      doc.text('Harold Iseke, D.C.', margin, y);
+      y += 5;
+      doc.setFont('helvetica', 'italic');
       doc.setFontSize(10);
-      doc.setTextColor(50);
+      doc.text('Treating Provider', margin, y);
   
-      sentences.forEach(({ label, text }) => {
-        doc.setFont('helvetica', 'bold');
-        doc.setTextColor(color[0], color[1], color[2]);
-        doc.text(`• ${label}:`, margin, y);
-        y += 5;
-        doc.setFont('helvetica', 'normal');
-        doc.setTextColor(50);
-        doc.text(text, margin + 8, y);
-        y += text.length * 6 + 2;
-      });
-  
-      y += 10;
-    };
-  
-    const grouped = {
-      initial: visits.find(v => v.visitType === 'initial'),
-      followup: visits.find(v => v.visitType === 'followup'),
-      discharge: visits.find(v => v.visitType === 'discharge')
-    };
-  
-    // Initial Visit Section
-    if (grouped.initial) {
-      const v = grouped.initial;
-      addNarrativeSection('INITIAL VISIT', colors.accent, [
-        ['Chief Complaint', v.chiefComplaint],
-        ['Chiropractic Adjustment', v.chiropracticAdjustment?.join(', ')],
-        ['Chiropractic Other Notes', v.chiropracticOther],
-        ['Acupuncture', v.acupuncture?.join(', ')],
-        ['Acupuncture Other Notes', v.acupunctureOther],
-        ['Physiotherapy', v.physiotherapy?.join(', ')],
-        ['Rehabilitation Exercises', v.rehabilitationExercises?.join(', ')],
-        ['Treatment Frequency', v.durationFrequency ? `${v.durationFrequency.timesPerWeek} times/week, re-eval in ${v.durationFrequency.reEvalInWeeks} weeks` : ''],
-        ['Referrals', v.referrals?.join(', ')],
-        ['Imaging', v.imaging ? Object.entries(v.imaging).map(([modality, parts]) => 
-          `${modality.toUpperCase()}: ${parts.join(', ')}`).join('; ') : ''],
-        ['Diagnostic Ultrasound', v.diagnosticUltrasound],
-        ['Nerve Study', v.nerveStudy?.join(', ')],
-        ['Restrictions', v.restrictions ? 
-          `Avoid activity for ${v.restrictions.avoidActivityWeeks} weeks, lifting limit ${v.restrictions.liftingLimitLbs} lbs` + 
-          (v.restrictions.avoidProlongedSitting ? ', avoid prolonged sitting' : '') : ''],
-        ['Disability Duration', v.disabilityDuration],
-        ['Other Notes', v.otherNotes]
-      ]);
-    }
-  
-    // Follow-up Visit Section
-    if (grouped.followup) {
-      const v = grouped.followup;
-      addNarrativeSection('FOLLOW-UP VISIT', colors.success, [
-        ['Areas Status', [
-          v.areasImproving ? '✓ Improving' : '',
-          v.areasExacerbated ? '✗ Exacerbated' : '',
-          v.areasSame ? '➔ Same' : ''
-        ].filter(Boolean).join(' ')],
-        ['Muscle Palpation', v.musclePalpation],
-        ['Pain Radiating', v.painRadiating],
-        ['Range of Motion', [
-          v.romWnlNoPain ? '✓ WNL (No Pain)' : '',
-          v.romWnlWithPain ? '⚠ WNL (With Pain)' : '',
-          v.romImproved ? '↑ Improved' : '',
-          v.romDecreased ? '↓ Decreased' : '',
-          v.romSame ? '→ Same' : ''
-        ].filter(Boolean).join(' ')],
-        ['Orthopedic Tests', v.orthos ? `${v.orthos.tests} - ${v.orthos.result}` : ''],
-        ['Activities Causing Pain', [v.activitiesCausePain, v.activitiesCausePainOther].filter(Boolean).join(' ')],
-        ['Treatment Plan', v.treatmentPlan ? `${v.treatmentPlan.treatments} (${v.treatmentPlan.timesPerWeek} times/week)` : ''],
-        ['Overall Response', [
-          v.overallResponse?.improving ? '↑ Improving' : '',
-          v.overallResponse?.worse ? '↓ Worse' : '',
-          v.overallResponse?.same ? '→ Same' : ''
-        ].filter(Boolean).join(' ')],
-        ['Diagnostic Study', v.diagnosticStudy ? 
-          `${v.diagnosticStudy.study} of ${v.diagnosticStudy.bodyPart}: ${v.diagnosticStudy.result}` : ''],
-        ['Home Care', Array.isArray(v.homeCare) ? v.homeCare.join(', ') : (v.homeCare || 'N/A')],
-        ['Referral', v.referral],
-        ['Notes', v.otherNotes]
-      ]);
-      
-    
-     
-    }
-  
-    // Discharge Visit Section
-    if (grouped.discharge) {
-      const v = grouped.discharge;
-      addNarrativeSection('DISCHARGE VISIT', colors.secondary, [
-        ['Prognosis', v.prognosis],
-        ['Range of Motion', v.romPercent ? `${v.romPercent}% of pre-injury ROM` : ''],
-        ['Diagnostic Study', v.diagnosticStudy ? 
-          `${v.diagnosticStudy.study} of ${v.diagnosticStudy.bodyPart}: ${v.diagnosticStudy.result}` : ''],
-       ['Recommended Future Medical Care', Array.isArray(v.futureMedicalCare) ? v.futureMedicalCare.join(', ') : (v.futureMedicalCare || 'N/A')],
-        ['Croft Criteria', v.croftCriteria],
-        ['AMA Disability', v.amaDisability],
-        ['Home Care Instructions', v.homeCare?.join(', ')],
-        ['Referrals / Notes', v.referralsNotes],
-        ['Treatment Summary', v.treatmentSummary],
-        ['Discharge Diagnosis', v.dischargeDiagnosis?.join(', ')],
-        ['Medications at Discharge', v.medicationsAtDischarge?.map(med => 
-          `${med.name} (${med.dosage}, ${med.frequency}, ${med.duration})`).join('; ')],
-        ['Follow-up Instructions', v.followUpInstructions],
-        ['Return Precautions', v.returnPrecautions?.join(', ')]
-      ]);
-    }
-  
-    // Add page numbers and header/footer to all pages
-    const totalPages = (doc as any).internal.getNumberOfPages();
-    for (let i = 1; i <= totalPages; i++) {
-      doc.setPage(i);
-      addHeaderAndFooter(doc, i, totalPages);
-    }
-  
-    const fileName = `${patient?.lastName || 'Report'}_Narrative_Report.pdf`;
-    doc.save(fileName);
-  
-    const blob = doc.output('blob');
-    const formData = new FormData();
-    formData.append('file', blob, fileName);
-  
-    try {
-      await axios.post('http://localhost:5000/api/reports/upload', formData);
-      if (patient?.email) {
-        await axios.post('http://localhost:5000/api/reports/email', { email: patient.email, fileName });
-        toast.success('Report emailed to provider/patient');
-      } else {
-        toast.info('Report saved to server (no email provided)');
+      // PAGINATION
+      const totalPages = doc.internal.getNumberOfPages();
+      for (let i = 1; i <= totalPages; i++) {
+        doc.setPage(i);
+        addHeaderAndFooter(doc, i, totalPages);
       }
+  
+      const fileName = `${patient.lastName}_${patient.firstName}_Medical_Report.pdf`;
+      const blob = doc.output('blob');
+      const formData = new FormData();
+      formData.append('file', blob, fileName);
+      await axios.post('http://localhost:5000/api/reports/upload', formData);
+  
+      const downloadLink = document.createElement('a');
+      downloadLink.href = URL.createObjectURL(blob);
+      downloadLink.download = fileName;
+      document.body.appendChild(downloadLink);
+      downloadLink.click();
+      document.body.removeChild(downloadLink);
+  
+      toast.success('Report generated and downloaded successfully');
     } catch (err) {
-      // console.error('Upload/email failed:', err);
-      // toast.error('Upload or email failed.');
+      console.error('Error:', err);
+      toast.error('Failed to generate report');
+    } finally {
+      setIsGeneratingReport(false);
     }
   };
-
+  
 
   if (isLoading) {
     return (
@@ -730,6 +712,14 @@ const PatientDetails: React.FC<{}> = () => {
 
   return (
     <div className="container mx-auto px-4">
+      {isGeneratingReport && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+          <div className="bg-white rounded-lg p-8 flex flex-col items-center shadow-lg">
+            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mb-4"></div>
+            <span className="text-lg font-semibold text-gray-700">Generating report, please wait...</span>
+          </div>
+        </div>
+      )}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
         <div className="flex items-center mb-4 md:mb-0">
           <button

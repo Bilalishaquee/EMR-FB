@@ -1,9 +1,20 @@
 import dotenv from 'dotenv';
-dotenv.config();
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+// Get the directory name
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Load environment variables from the correct path
+dotenv.config({ path: path.join(__dirname, '.env') });
+
+// Log environment variables for debugging
+console.log('Environment variables loaded:');
+console.log('MONGODB_URI:', process.env.MONGODB_URI ? 'Set' : 'Not set');
+console.log('OPENROUTER_API_KEY:', process.env.OPENROUTER_API_KEY ? 'Set' : 'Not set');
+
 import reportsRoutes from './routes/reports.js';
-console.log('Loaded MONGODB_URI:', process.env.MONGODB_URI);
-
-
 import express from 'express';
 import mongoose from 'mongoose';
 import visitRoutes from './routes/visits.js';
@@ -26,7 +37,7 @@ const PORT = process.env.PORT || 5000;
 app.use(cors({
   origin: 'http://localhost:5173',
   credentials: true,
- methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
@@ -42,7 +53,7 @@ mongoose.connect(process.env.MONGODB_URI)
     app.use('/api/patients', authenticateToken, patientRoutes);
     app.use('/api/appointments', authenticateToken, appointmentRoutes);
     app.use('/api/billing', authenticateToken, billingRoutes);
-    app.use('/api', aiRoutes);
+    app.use('/api/ai', aiRoutes);
 
     // Health check
     app.get('/api/health', (req, res) => {
@@ -51,6 +62,7 @@ mongoose.connect(process.env.MONGODB_URI)
 
     app.use('/api/reports', reportsRoutes);
     app.use('/api/visits', authenticateToken, visitRoutes);
+
     // Error handler
     app.use((err, req, res, next) => {
       console.error(err.stack);
