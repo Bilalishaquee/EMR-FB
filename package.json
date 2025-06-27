@@ -1,0 +1,7 @@
+{
+  "name": "emr-fb-monorepo",
+  "private": true,
+  "scripts": {
+    "preinstall": "rm -rf node_modules package-lock.json"
+  }
+} 
