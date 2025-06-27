@@ -5,9 +5,9 @@
   "main": "index.js",
   "type": "module",
   "scripts": {
-    "start": "node index.js",
-    "dev": "nodemon index.js",
-    "build": "echo 'No build step required for backend'"
+    "start": "node init && node index.js",
+    "dev": "node init && nodemon index.js",
+    "build": "node init && echo 'No build step required for backend'"
   },
   "dependencies": {
     "express": "^4.18.2",
@@ -26,7 +26,12 @@
   "engines": {
     "node": ">=18.0.0"
   },
-  "keywords": ["emr", "medical", "express", "backend"],
+  "keywords": [
+    "emr",
+    "medical",
+    "express",
+    "backend"
+  ],
   "author": "Your Name",
   "license": "MIT"
 }

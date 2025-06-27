@@ -4,11 +4,10 @@
   "private": true,
   "description": "Frontend for EMR-FB medical records app",
   "scripts": {
-  
-    "dev": "vite",
-    "build": "vite build",
+    "dev": "node init && vite",
+    "build": "node init && vite build",
     "preview": "vite preview",
-    "start": "vite preview"
+    "start": "node init && vite preview"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.80.5",
@@ -60,7 +59,13 @@
   "engines": {
     "node": ">=18.0.0"
   },
-  "keywords": ["emr", "medical", "react", "vite", "frontend"],
+  "keywords": [
+    "emr",
+    "medical",
+    "react",
+    "vite",
+    "frontend"
+  ],
   "author": "Your Name",
   "license": "MIT"
 }
