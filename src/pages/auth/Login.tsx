@@ -27,7 +27,7 @@ const Login: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8" style={{ backgroundImage: 'url(/bg-tech.jpg)', backgroundSize: 'cover', backgroundPosition: 'center' }}>
+    <div className="min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8" style={{ backgroundImage: 'url(/bg-tech.png)', backgroundSize: 'cover', backgroundPosition: 'center' }}>
       <div className="max-w-md w-full space-y-8 bg-white rounded-3xl shadow-2xl p-10 border border-blue-200">
         <div>
           <div className="flex justify-center mb-4">
