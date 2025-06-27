@@ -4,11 +4,11 @@
   "private": true,
   "description": "Frontend for EMR-FB medical records app",
   "scripts": {
-    "preinstall": "rm -rf node_modules package-lock.json",
+  
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "start": "npm run dev"
+    "start": "vite preview"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.80.5",
