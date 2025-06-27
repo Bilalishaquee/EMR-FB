@@ -348,7 +348,7 @@ const { data: patientData, isLoading } = useQuery({
       
       // Then, generate AI narrative
       try {
-        const aiResponse = await axios.post(`${import.meta.env.VITE_API_URL}/api/generate-narrative`, {
+        const aiResponse = await axios.post(`https://emr-fb-1.onrender.com/api/generate-narrative`, {
           ...formData,
           visitType: 'initial'
         });
