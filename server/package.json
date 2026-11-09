@@ -5,9 +5,9 @@
   "main": "index.js",
   "type": "module",
   "scripts": {
-    "start": "node init && node index.js",
-    "dev": "node init && nodemon index.js",
-    "build": "node init && echo 'No build step required for backend'"
+    "start": "node index.js",
+    "dev": "nodemon index.js",
+    "build": "echo 'No build step required for backend'"
   },
   "dependencies": {
     "express": "^4.18.2",
